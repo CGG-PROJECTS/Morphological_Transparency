@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Morphological Transparency Explorer</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <style>
+    :root {
+      --blue: #2f6f9f;
+      --light-blue: #e8f2fa;
+      --dark: #1f2933;
+      --gray: #6b7280;
+      --light-gray: #f3f4f6;
+      --border: #d1d5db;
+      --red: #b91c1c;
+      --green: #047857;
+      --orange: #b45309;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 0;
+      color: var(--dark);
+      background: #ffffff;
+    }
+
+    header {
+      background: var(--blue);
+      color: white;
+      padding: 28px 36px;
+    }
+
+    header h1 {
+      margin: 0 0 8px 0;
+      font-size: 34px;
+      font-weight: 700;
+    }
+
+    header p {
+      margin: 0;
+      font-size: 16px;
+      max-width: 1000px;
+      line-height: 1.45;
+    }
+
+    main {
+      padding: 28px 36px 50px 36px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .notice {
+      background: #fff7ed;
+      border-left: 5px solid var(--orange);
+      padding: 14px 18px;
+      margin-bottom: 22px;
+      line-height: 1.45;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 18px;
+      align-items: end;
+    }
+
+    label {
+      font-weight: 700;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input, select, button {
+      font-size: 16px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    button {
+      background: var(--blue);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .stats {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 12px 0 24px 0;
+    }
+
+    .stat-card {
+      background: var(--light-gray);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      min-width: 150px;
+    }
+
+    .stat-card .value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--blue);
+    }
+
+    .stat-card .label {
+      font-size: 13px;
+      color: var(--gray);
+      margin-top: 4px;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin: 22px 0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      color: var(--blue);
+    }
+
+    .word-title {
+      font-size: 30px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      margin: 4px 4px 4px 0;
+      background: var(--light-blue);
+      color: var(--blue);
+    }
+
+    .tag.red {
+      background: #fee2e2;
+      color: var(--red);
+    }
+
+    .tag.green {
+      background: #d1fae5;
+      color: var(--green);
+    }
+
+    .tag.orange {
+      background: #ffedd5;
+      color: var(--orange);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .field {
+      background: var(--light-gray);
+      border-radius: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+    }
+
+    .field .field-label {
+      font-size: 12px;
+      color: var(--gray);
+      margin-bottom: 4px;
+    }
+
+    .field .field-value {
+      font-size: 17px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .teacher-note {
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: #f0f9ff;
+      border-left: 5px solid var(--blue);
+      line-height: 1.5;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--light-gray);
+      cursor: pointer;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tr:nth-child(even) {
+      background: #fafafa;
+    }
+
+    .small {
+      color: var(--gray);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .loading {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--blue);
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 20px 36px;
+      color: var(--gray);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 900px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      header h1 {
+        font-size: 26px;
+      }
+
+      main {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>Morphological Transparency Explorer</h1>
+  <p>
+    Search for a word to view GPT-based morphological alignment, discrepancy,
+    Graves reading-program frequency, and VXGL expected grade level.
+  </p>
+</header>
+
+<main>
+
+  <div class="notice">
+    <strong>Important:</strong>
+    These are automated estimates. The transparency score reflects the alignment
+    between GPT-estimated morpheme count and a reference morpheme count. It is
+    not a direct measure of what every child will perceive. Use as a screening
+    and instructional planning tool.
+  </div>
+
+  <div id="loading" class="loading">Loading database...</div>
+
+  <div id="app" class="hidden">
+
+    <div class="controls">
+      <div>
+        <label for="searchBox">Search word</label>
+        <input id="searchBox" type="text" placeholder="e.g., information, scientist, responsibility" />
+      </div>
+
+      <div>
+        <label for="matchFilter">Match type</label>
+        <select id="matchFilter">
+          <option value="">All</option>
+          <option value="Exact alignment">Exact alignment</option>
+          <option value="Small mismatch">Small mismatch</option>
+          <option value="Large mismatch">Large mismatch</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="instructionFilter">Instructional category</label>
+        <select id="instructionFilter">
+          <option value="">All</option>
+        </select>
+      </div>
+
+      <div>
+        <label>&nbsp;</label>
+        <button id="clearButton">Clear</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div id="statTotal" class="value">0</div>
+        <div class="label">Total words</div>
+      </div>
+      <div class="stat-card">
+        <div id="statShown" class="value">0</div>
+        <div class="label">Rows shown</div>
+      </div>
+      <div class="stat-card">
+        <div id="statTransparency" class="value">0</div>
+        <div class="label">With transparency</div>
+      </div>
+      <div class="stat-card">
+        <div id="statGraves" class="value">0</div>
+        <div class="label">In Graves</div>
+      </div>
+      <div class="stat-card">
+        <div id="statVXGL" class="value">0</div>
+        <div class="label">In VXGL</div>
+      </div>
+    </div>
+
+    <div id="exactResult"></div>
+
+    <div class="card">
+      <h2>Search results</h2>
+      <p class="small">
+        Showing up to 300 rows. Type a word above to narrow results.
+        Click table headers to sort.
+      </p>
+
+      <div style="overflow-x:auto; max-height: 650px;">
+        <table id="resultsTable">
+          <thead>
+            <tr>
+              <th data-col="Word">Word</th>
+              <th data-col="Transparency_0_1">Transparency</th>
+              <th data-col="Match_Category">Match</th>
+              <th data-col="Direction_Category">Direction</th>
+              <th data-col="Reference_NMorph">Ref. NMorph</th>
+              <th data-col="GPT_Predicted_Morphemes">GPT Estimate</th>
+              <th data-col="Absolute_Discrepancy">Abs. Disc.</th>
+              <th data-col="SCOPE_Length">Length</th>
+              <th data-col="Graves_All_Grades_Count">Graves Count</th>
+              <th data-col="VXGL">VXGL</th>
+              <th data-col="Instructional_Category">Instructional Category</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<footer>
+  <p>
+    Transparency score: higher values indicate closer alignment between GPT-estimated
+    and reference morpheme counts. Absolute discrepancy gives the size of the mismatch.
+    Signed discrepancy indicates whether GPT estimated fewer or more morphemes than the
+    reference. Human review is recommended for instructional decisions.
+  </p>
+</footer>
+
+
+<script>
+  const CSV_FILE = "morph_transparency_lookup_database.csv";
+
+  let database = [];
+  let filtered = [];
+  let currentSort = { col: "Word", asc: true };
+
+  function cleanWord(x) {
+    return String(x || "").trim().toLowerCase();
+  }
+
+  function isMissing(x) {
+    return x === undefined || x === null || x === "" || x === "NA" || x === "NaN";
+  }
+
+  function fmt(x, digits = 3) {
+    if (isMissing(x)) return "";
+    const n = Number(x);
+    if (Number.isNaN(n)) return x;
+    return n.toFixed(digits).replace(/\.?0+$/, "");
+  }
+
+  function tagClass(matchCategory) {
+    if (matchCategory === "Exact alignment") return "green";
+    if (matchCategory === "Small mismatch") return "orange";
+    if (matchCategory === "Large mismatch") return "red";
+    return "";
+  }
+
+  function makeField(label, value) {
+    return `
+      <div class="field">
+        <div class="field-label">${label}</div>
+        <div class="field-value">${isMissing(value) ? "—" : value}</div>
+      </div>
+    `;
+  }
+
+  function renderExactResult(row) {
+    const container = document.getElementById("exactResult");
+
+    if (!row) {
+      container.innerHTML = "";
+      return;
+    }
+
+    const match = row.Match_Category || "";
+    const direction = row.Direction_Category || "";
+    const inst = row.Instructional_Category || "";
+
+    container.innerHTML = `
+      <div class="card">
+        <div class="word-title">${row.Word}</div>
+
+        <span class="tag ${tagClass(match)}">${match || "No match category"}</span>
+        <span class="tag">${direction || "No direction category"}</span>
+        <span class="tag">${inst || "No instructional category"}</span>
+
+        <div class="grid">
+          ${makeField("Transparency 0–1", fmt(row.Transparency_0_1))}
+          ${makeField("Absolute discrepancy", fmt(row.Absolute_Discrepancy))}
+          ${makeField("Signed discrepancy", fmt(row.Signed_Discrepancy_GPT_minus_Reference))}
+          ${makeField("Alignment category", row.Alignment_Category)}
+
+          ${makeField("Reference morphemes", fmt(row.Reference_NMorph))}
+          ${makeField("GPT predicted morphemes", fmt(row.GPT_Predicted_Morphemes))}
+          ${makeField("Undersegmentation", fmt(row.Undersegmentation))}
+          ${makeField("Oversegmentation", fmt(row.Oversegmentation))}
+
+          ${makeField("Word length", fmt(row.SCOPE_Length))}
+          ${makeField("SCOPE frequency", fmt(row.SCOPE_Freq_SUBTLEXUS))}
+          ${makeField("SCOPE Zipf", fmt(row.SCOPE_Zipf))}
+          ${makeField("Log10 frequency", fmt(row.SCOPE_Log10_Freq))}
+
+          ${makeField("Graves all-grade count", fmt(row.Graves_All_Grades_Count))}
+          ${makeField("Graves first grade", fmt(row.Graves_First_Grade))}
+          ${makeField("Graves weighted mean grade", fmt(row.Graves_Weighted_Mean_Grade))}
+          ${makeField("VXGL", fmt(row.VXGL))}
+
+          ${makeField("VXGL grade band", fmt(row.VXGL_Grade_Band))}
+          ${makeField("AoA Kuper", fmt(row.AoA_Kuper))}
+          ${makeField("AoA LWV", fmt(row.AoA_LWV))}
+          ${makeField("AoA Glasgow", fmt(row.AoA_Glasgow))}
+        </div>
+
+        <div class="teacher-note">
+          <strong>Interpretation:</strong><br>
+          ${row.Transparency_Interpretation || "No interpretation available."}
+          <br><br>
+          <strong>Teacher note:</strong><br>
+          ${row.Teacher_Note || "Use teacher/researcher judgment."}
+        </div>
+      </div>
+    `;
+  }
+
+  function updateStats(rows) {
+    document.getElementById("statTotal").textContent = database.length.toLocaleString();
+    document.getElementById("statShown").textContent = rows.length.toLocaleString();
+
+    const withTrans = database.filter(r => !isMissing(r.Transparency_0_1)).length;
+    const inGraves = database.filter(r => !isMissing(r.Graves_All_Grades_Count)).length;
+    const inVXGL = database.filter(r => !isMissing(r.VXGL)).length;
+
+    document.getElementById("statTransparency").textContent = withTrans.toLocaleString();
+    document.getElementById("statGraves").textContent = inGraves.toLocaleString();
+    document.getElementById("statVXGL").textContent = inVXGL.toLocaleString();
+  }
+
+  function renderTable(rows) {
+    const tbody = document.querySelector("#resultsTable tbody");
+    tbody.innerHTML = "";
+
+    const maxRows = 300;
+    const showRows = rows.slice(0, maxRows);
+
+    for (const row of showRows) {
+      const tr = document.createElement("tr");
+
+      tr.innerHTML = `
+        <td>${row.Word || ""}</td>
+        <td>${fmt(row.Transparency_0_1)}</td>
+        <td>${row.Match_Category || ""}</td>
+        <td>${row.Direction_Category || ""}</td>
+        <td>${fmt(row.Reference_NMorph)}</td>
+        <td>${fmt(row.GPT_Predicted_Morphemes)}</td>
+        <td>${fmt(row.Absolute_Discrepancy)}</td>
+        <td>${fmt(row.SCOPE_Length)}</td>
+        <td>${fmt(row.Graves_All_Grades_Count, 0)}</td>
+        <td>${fmt(row.VXGL)}</td>
+        <td>${row.Instructional_Category || ""}</td>
+      `;
+
+      tr.addEventListener("click", () => {
+        renderExactResult(row);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+
+      tbody.appendChild(tr);
+    }
+  }
+
+  function applyFilters() {
+    const query = cleanWord(document.getElementById("searchBox").value);
+    const matchFilter = document.getElementById("matchFilter").value;
+    const instructionFilter = document.getElementById("instructionFilter").value;
+
+    let rows = database;
+
+    if (query !== "") {
+      rows = rows.filter(r => cleanWord(r.Word).includes(query));
+    }
+
+    if (matchFilter !== "") {
+      rows = rows.filter(r => r.Match_Category === matchFilter);
+    }
+
+    if (instructionFilter !== "") {
+      rows = rows.filter(r => r.Instructional_Category === instructionFilter);
+    }
+
+    rows = sortRows(rows, currentSort.col, currentSort.asc);
+
+    filtered = rows;
+    updateStats(filtered);
+    renderTable(filtered);
+
+    const exact = database.find(r => cleanWord(r.Word) === query);
+    renderExactResult(exact);
+  }
+
+  function sortRows(rows, col, asc) {
+    return [...rows].sort((a, b) => {
+      let av = a[col];
+      let bv = b[col];
+
+      const an = Number(av);
+      const bn = Number(bv);
+
+      if (!Number.isNaN(an) && !Number.isNaN(bn)) {
+        return asc ? an - bn : bn - an;
+      }
+
+      av = String(av || "").toLowerCase();
+      bv = String(bv || "").toLowerCase();
+
+      if (av < bv) return asc ? -1 : 1;
+      if (av > bv) return asc ? 1 : -1;
+      return 0;
+    });
+  }
+
+  function populateInstructionFilter() {
+    const select = document.getElementById("instructionFilter");
+
+    const categories = [...new Set(
+      database
+        .map(r => r.Instructional_Category)
+        .filter(x => !isMissing(x))
+    )].sort();
+
+    for (const cat of categories) {
+      const opt = document.createElement("option");
+      opt.value = cat;
+      opt.textContent = cat;
+      select.appendChild(opt);
+    }
+  }
+
+  function setupEvents() {
+    document.getElementById("searchBox").addEventListener("input", applyFilters);
+    document.getElementById("matchFilter").addEventListener("change", applyFilters);
+    document.getElementById("instructionFilter").addEventListener("change", applyFilters);
+
+    document.getElementById("clearButton").addEventListener("click", () => {
+      document.getElementById("searchBox").value = "";
+      document.getElementById("matchFilter").value = "";
+      document.getElementById("instructionFilter").value = "";
+      renderExactResult(null);
+      applyFilters();
+    });
+
+    document.querySelectorAll("th[data-col]").forEach(th => {
+      th.addEventListener("click", () => {
+        const col = th.getAttribute("data-col");
+
+        if (currentSort.col === col) {
+          currentSort.asc = !currentSort.asc;
+        } else {
+          currentSort.col = col;
+          currentSort.asc = true;
+        }
+
+        applyFilters();
+      });
+    });
+  }
+
+  Papa.parse(CSV_FILE, {
+    download: true,
+    header: true,
+    dynamicTyping: false,
+    skipEmptyLines: true,
+    complete: function(results) {
+      database = results.data.filter(r => r.Word && r.Word.trim() !== "");
+
+      document.getElementById("loading").classList.add("hidden");
+      document.getElementById("app").classList.remove("hidden");
+
+      populateInstructionFilter();
+      setupEvents();
+      applyFilters();
+    },
+    error: function(err) {
+      document.getElementById("loading").innerHTML =
+        "Error loading database. Make sure morph_transparency_lookup_database.csv is in the same folder as index.html.";
+      console.error(err);
+    }
+  });
+</script>
+
+</body>
+</html>
