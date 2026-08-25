@@ -6,7 +6,11 @@
 
   <title>Morphological Transparency Explorer</title>
 
+  <!-- CSV parser -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <!-- Gzip decompressor -->
+  <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 
   <style>
     :root {
@@ -230,6 +234,10 @@
       background: #fafafa;
     }
 
+    tr:hover {
+      background: #eef6ff;
+    }
+
     .small {
       color: var(--gray);
       font-size: 13px;
@@ -300,7 +308,7 @@
     and instructional planning tool.
   </div>
 
-  <div id="loading" class="loading">Loading database...</div>
+  <div id="loading" class="loading">Loading compressed database...</div>
 
   <div id="app" class="hidden">
 
@@ -362,7 +370,7 @@
       <h2>Search results</h2>
       <p class="small">
         Showing up to 300 rows. Type a word above to narrow results.
-        Click table headers to sort.
+        Click table headers to sort. Click a row to view details.
       </p>
 
       <div style="overflow-x:auto; max-height: 650px;">
@@ -402,7 +410,7 @@
 
 
 <script>
-  const CSV_FILE = "morph_transparency_lookup_database.csv";
+  const GZ_FILE = "morph_transparency_lookup_database_web.csv.gz";
 
   let database = [];
   let filtered = [];
@@ -475,15 +483,16 @@
           ${makeField("SCOPE Zipf", fmt(row.SCOPE_Zipf))}
           ${makeField("Log10 frequency", fmt(row.SCOPE_Log10_Freq))}
 
-          ${makeField("Graves all-grade count", fmt(row.Graves_All_Grades_Count))}
+          ${makeField("Graves all-grade count", fmt(row.Graves_All_Grades_Count, 0))}
           ${makeField("Graves first grade", fmt(row.Graves_First_Grade))}
           ${makeField("Graves weighted mean grade", fmt(row.Graves_Weighted_Mean_Grade))}
           ${makeField("VXGL", fmt(row.VXGL))}
-
           ${makeField("VXGL grade band", fmt(row.VXGL_Grade_Band))}
+
           ${makeField("AoA Kuper", fmt(row.AoA_Kuper))}
           ${makeField("AoA LWV", fmt(row.AoA_LWV))}
           ${makeField("AoA Glasgow", fmt(row.AoA_Glasgow))}
+          ${makeField("ELP lexical decision RT", fmt(row.LexicalD_RT_V_ELP))}
         </div>
 
         <div class="teacher-note">
@@ -543,6 +552,27 @@
     }
   }
 
+  function sortRows(rows, col, asc) {
+    return [...rows].sort((a, b) => {
+      let av = a[col];
+      let bv = b[col];
+
+      const an = Number(av);
+      const bn = Number(bv);
+
+      if (!Number.isNaN(an) && !Number.isNaN(bn)) {
+        return asc ? an - bn : bn - an;
+      }
+
+      av = String(av || "").toLowerCase();
+      bv = String(bv || "").toLowerCase();
+
+      if (av < bv) return asc ? -1 : 1;
+      if (av > bv) return asc ? 1 : -1;
+      return 0;
+    });
+  }
+
   function applyFilters() {
     const query = cleanWord(document.getElementById("searchBox").value);
     const matchFilter = document.getElementById("matchFilter").value;
@@ -570,27 +600,6 @@
 
     const exact = database.find(r => cleanWord(r.Word) === query);
     renderExactResult(exact);
-  }
-
-  function sortRows(rows, col, asc) {
-    return [...rows].sort((a, b) => {
-      let av = a[col];
-      let bv = b[col];
-
-      const an = Number(av);
-      const bn = Number(bv);
-
-      if (!Number.isNaN(an) && !Number.isNaN(bn)) {
-        return asc ? an - bn : bn - an;
-      }
-
-      av = String(av || "").toLowerCase();
-      bv = String(bv || "").toLowerCase();
-
-      if (av < bv) return asc ? -1 : 1;
-      if (av > bv) return asc ? 1 : -1;
-      return 0;
-    });
   }
 
   function populateInstructionFilter() {
@@ -639,13 +648,27 @@
     });
   }
 
-  Papa.parse(CSV_FILE, {
-    download: true,
-    header: true,
-    dynamicTyping: false,
-    skipEmptyLines: true,
-    complete: function(results) {
-      database = results.data.filter(r => r.Word && r.Word.trim() !== "");
+  async function loadCompressedCSV() {
+    try {
+      const response = await fetch(GZ_FILE);
+
+      if (!response.ok) {
+        throw new Error("Could not fetch " + GZ_FILE + ". HTTP status: " + response.status);
+      }
+
+      const compressedBuffer = await response.arrayBuffer();
+
+      const decompressed = pako.ungzip(new Uint8Array(compressedBuffer), {
+        to: "string"
+      });
+
+      const parsed = Papa.parse(decompressed, {
+        header: true,
+        dynamicTyping: false,
+        skipEmptyLines: true
+      });
+
+      database = parsed.data.filter(r => r.Word && r.Word.trim() !== "");
 
       document.getElementById("loading").classList.add("hidden");
       document.getElementById("app").classList.remove("hidden");
@@ -653,13 +676,15 @@
       populateInstructionFilter();
       setupEvents();
       applyFilters();
-    },
-    error: function(err) {
-      document.getElementById("loading").innerHTML =
-        "Error loading database. Make sure morph_transparency_lookup_database.csv is in the same folder as index.html.";
+
+    } catch (err) {
       console.error(err);
+      document.getElementById("loading").innerHTML =
+        "Error loading compressed database. Make sure morph_transparency_lookup_database_web.csv.gz is in the same folder as index.html.";
     }
-  });
+  }
+
+  loadCompressedCSV();
 </script>
 
 </body>
