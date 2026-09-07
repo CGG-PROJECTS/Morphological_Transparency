@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Morphological Transparency Norms Dashboard</title>
   
-  <!-- SheetJS -->
+  <!-- SheetJS for reading Excel/CSV files -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <!-- jQuery & DataTables + Extensions -->
+  <!-- jQuery & DataTables + Export Buttons -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.1.2/css/buttons.dataTables.min.css">
@@ -28,11 +28,15 @@
     body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 1280px; margin: 0 auto; padding: 20px; }
     h1 { color: var(--primary); }
     h2 { color: var(--primary); margin-top: 0; }
+    h3 { color: #334155; margin-bottom: 5px; }
 
     .summary, .instructions, .filter-box, .metrics-guide, .kpi-container { 
       background: var(--bg-slate); padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-slate); 
     }
     
+    .metrics-guide ul { margin-top: 5px; margin-bottom: 15px; padding-left: 20px; }
+    .metrics-guide li { margin-bottom: 5px; }
+
     /* Dynamic KPI Section */
     .kpi-container {
       display: grid;
@@ -70,12 +74,13 @@
     .table-container { overflow-x: auto; margin-top: 10px; }
     pre { background: #1e293b; color: #f8fafc; padding: 15px; border-radius: 5px; overflow-x: auto; }
     a { color: var(--primary-light); text-decoration: none; font-weight: bold; }
+    a:hover { text-decoration: underline; }
     
     .filter-group { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
     .filter-group label { font-weight: bold; color: var(--primary); }
     .filter-group input { padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; width: 90px; }
 
-    /* Conditional Formatting Classes */
+    /* Conditional Formatting Badge Classes */
     .badge-transparent { background-color: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 12px; font-weight: bold; }
     .badge-opaque { background-color: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-weight: bold; }
   </style>
@@ -83,6 +88,37 @@
 <body>
 
   <h1>Morphological Transparency Norms Dashboard</h1>
+  
+  <div class="summary">
+    <h2>Project Summary</h2>
+    <p>This dataset provides large-scale estimates of semantic transparency and perceived morphological structure for English polymorphemic words.</p>
+    <ul>
+      <li><strong>Study 1:</strong> Semantic distance between a derivation and its baseword (Nagy & Anderson, 1984).</li>
+      <li><strong>Study 2:</strong> Crowdsourced human norms and fine-tuned LLM estimates of perceived morphemes.</li>
+    </ul>
+  </div>
+
+  <div class="metrics-guide">
+    <h2>Understanding the Metrics</h2>
+    
+    <h3>Study 1: Semantic Distance Scale</h3>
+    <p style="font-size: 0.9em; margin-bottom: 10px; color: #64748b;">Ratings 0–2 are considered transparent (meaning can be inferred), while 3–5 are considered opaque.</p>
+    <ul>
+      <li><strong>SEM 0:</strong> Semantically transparent.</li>
+      <li><strong>SEM 1:</strong> Meaning inferable from baseword with minimal help from context.</li>
+      <li><strong>SEM 2:</strong> Meaning inferable with reasonable help from context.</li>
+      <li><strong>SEM 3:</strong> Meaning includes features not inferable without substantial context.</li>
+      <li><strong>SEM 4:</strong> Distantly related; probably not apparent unless pointed out.</li>
+      <li><strong>SEM 5:</strong> Lack of any discernible semantic connection.</li>
+    </ul>
+    <h3>Study 2: Perceived Morphemes & Discrepancy</h3>
+    <ul>
+      <li><strong>Perceived Morpheme Count:</strong> The average number of meaningful word parts readers typically perceive in a word.</li>
+      <li><strong>Signed Discrepancy (Perceived minus ELP):</strong> Negative values indicate <em>undersegmentation</em> (readers perceived fewer morphemes than listed). Positive values indicate <em>oversegmentation</em> (readers perceived more morphemes).</li>
+      <li><strong>Absolute Discrepancy:</strong> The total size of the mismatch. A value of 0 means perfect alignment between human perception and lexical databases (transparent). Values &le; 1 are classified as transparent; values &gt; 1 indicate larger mismatch (opaque).</li>
+      <li><strong>Transparency Proximity:</strong> A 0-1 scaled score where 1 equals perfect alignment.</li>
+    </ul>
+  </div>
 
   <!-- Dynamic KPIs -->
   <div class="kpi-container">
@@ -108,6 +144,9 @@
   <!-- Filters -->
   <div class="filter-box">
     <h2>Data Filters</h2>
+    <p style="font-size: 0.9em; color: #64748b; margin-top: -10px; margin-bottom: 15px;">
+      Use the search bar below to find specific words, or use these boxes to filter by specific transparency ranges. Leave blank to clear filter.
+    </p>
     
     <div id="filterTab0" class="filter-group">
       <label>Semantic Distance Range (SEM 0-5):</label>
@@ -135,6 +174,30 @@
   <div id="tab0" class="tab-content active"><div class="table-container"><table id="dataTable1" class="display" style="width:100%"></table></div></div>
   <div id="tab1" class="tab-content"><div class="table-container"><table id="dataTable2" class="display" style="width:100%"></table></div></div>
   <div id="tab2" class="tab-content"><div class="table-container"><table id="dataTable3" class="display" style="width:100%"></table></div></div>
+
+  <!-- How to Access Data -->
+  <div class="instructions">
+    <h2>How to Access & Use This Data</h2>
+    <p style="margin-bottom: 20px;">
+       <a href="Study_1_Final_Data_Semantic_Distance_Ratings.csv" download>↓ Download Study 1</a> | 
+       <a href="Study_2_Final_Data_LLM_Transparency_Estimates.csv" download>↓ Download Study 2 LLM</a> | 
+       <a href="Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv" download>↓ Download Study 2 Crowdsourced</a>
+    </p>
+    
+    <h3>Load in Python (pandas)</h3>
+    <pre><code>import pandas as pd
+# Load the Study 2 LLM Estimates CSV file directly into a pandas dataframe
+url = "https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv"
+df = pd.read_csv(url)
+print(df.head())</code></pre>
+
+    <h3>Load in R (readr)</h3>
+    <pre><code>library(readr)
+# Load the Study 2 LLM Estimates CSV file directly into an R dataframe
+url &lt;- "https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv"
+df &lt;- read_csv(url)
+head(df)</code></pre>
+  </div>
 
   <script>
     const loadedTabs = {};
@@ -212,12 +275,24 @@
           data: key,
           defaultContent: "",
           render: function(data, type) {
-            if (type === 'display' && key === 'LLM_RATING_Semantic_Distance') {
-              const val = parseFloat(data);
-              if (!isNaN(val)) {
-                return val <= 2 
-                  ? `<span class="badge-transparent">${val} (Transparent)</span>` 
-                  : `<span class="badge-opaque">${val} (Opaque)</span>`;
+            if (type === 'display') {
+              // Study 1 Rendering Rule (0-2 = Transparent, 3-5 = Opaque)
+              if (key === 'LLM_RATING_Semantic_Distance') {
+                const val = parseFloat(data);
+                if (!isNaN(val)) {
+                  return val <= 2 
+                    ? `<span class="badge-transparent">${val} (Transparent)</span>` 
+                    : `<span class="badge-opaque">${val} (Opaque)</span>`;
+                }
+              }
+              // Study 2 Rendering Rule (<=1.0 = Transparent, >1.0 = Opaque)
+              if (key === 'Absolute_Discrepancy') {
+                const val = parseFloat(data);
+                if (!isNaN(val)) {
+                  return val <= 1.0 
+                    ? `<span class="badge-transparent">${val} (Transparent)</span>` 
+                    : `<span class="badge-opaque">${val} (Opaque)</span>`;
+                }
               }
             }
             return data;
@@ -249,7 +324,7 @@
       const table = $(`#${tableId}`).DataTable();
       const filteredData = table.rows({ filter: 'applied' }).data().toArray();
 
-      // 1. Update KPIs
+      // Update KPI: Filtered Records
       $('#kpiCount').text(filteredData.length.toLocaleString());
 
       let totalVal = 0;
@@ -259,8 +334,9 @@
       filteredData.forEach(row => {
         const val = parseFloat(row[targetCol]) || 0;
         totalVal += val;
+        // Transparent count logic: SEM <= 2 for Study 1, Abs Discrepancy <= 1.0 for Study 2
         if (tableId === 'dataTable1' && val <= 2) transparentCount++;
-        if (tableId !== 'dataTable1' && val < 0.5) transparentCount++;
+        if (tableId !== 'dataTable1' && val <= 1.0) transparentCount++;
       });
 
       const avg = filteredData.length ? (totalVal / filteredData.length).toFixed(2) : '0.00';
@@ -269,18 +345,17 @@
       $('#kpiAvgMetric').text(avg);
       $('#kpiRatio').text(ratio);
 
-      // 2. Update Dynamic Chart
+      // Update Dynamic Chart
       renderChart(filteredData, targetCol, tableId);
     }
 
     function renderChart(data, metricKey, tableId) {
       const ctx = document.getElementById('dynamicChart').getContext('2d');
       
-      // Calculate Bins for Chart
       const counts = tableId === 'dataTable1' ? [0, 0, 0, 0, 0, 0] : [0, 0, 0, 0];
       const labels = tableId === 'dataTable1' 
         ? ['SEM 0', 'SEM 1', 'SEM 2', 'SEM 3', 'SEM 4', 'SEM 5']
-        : ['0.0 - 0.5', '0.5 - 1.0', '1.0 - 1.5', '1.5+'];
+        : ['0.0 - 0.5 (Transparent)', '0.5 - 1.0 (Transparent)', '1.0 - 1.5 (Opaque)', '1.5+ (Opaque)'];
 
       data.forEach(row => {
         const val = parseFloat(row[metricKey]);
@@ -306,7 +381,9 @@
           datasets: [{
             label: tableId === 'dataTable1' ? 'Semantic Distance Frequency' : 'Discrepancy Distribution',
             data: counts,
-            backgroundColor: tableId === 'dataTable1' ? '#3b82f6' : '#8b5cf6'
+            backgroundColor: tableId === 'dataTable1' 
+              ? ['#22c55e','#22c55e','#22c55e','#ef4444','#ef4444','#ef4444']
+              : ['#22c55e','#22c55e','#ef4444','#ef4444']
           }]
         },
         options: {
