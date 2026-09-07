@@ -5,23 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Morphological Transparency Norms Dashboard</title>
 
-  <!-- SheetJS for reading Excel/CSV files -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <!-- jQuery & DataTables for searchable, sortable tables -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.min.css">
   <script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 1200px; margin: 0 auto; padding: 20px; }
     h1 { color: #1e3a8a; }
     .summary, .instructions { background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
-    .tabs { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; flex-wrap: wrap; }
     .tab-button { padding: 10px 15px; border: none; background: #e2e8f0; cursor: pointer; border-radius: 5px; font-weight: bold; }
     .tab-button.active { background: #1e3a8a; color: white; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
     .table-container { overflow-x: auto; margin-top: 10px; }
+    .loading { padding: 30px; text-align: center; color: #666; }
     pre { background: #1e293b; color: #f8fafc; padding: 15px; border-radius: 5px; overflow-x: auto; }
     a { color: #3b82f6; text-decoration: none; }
     a:hover { text-decoration: underline; }
@@ -31,12 +30,11 @@
 
   <h1>Morphological Transparency Norms Dashboard</h1>
 
-  <!-- Project Summary -->
   <div class="summary">
     <h2>Project Summary</h2>
     <p>This dataset provides large-scale estimates of semantic transparency and perceived morphological structure for English polymorphemic words.</p>
     <ul>
-      <li><strong>Study 1:</strong> Semantic distance between a derivation and its baseword (Nagy & Anderson, 1984) generated via GPT-4.1-mini.</li>
+      <li><strong>Study 1:</strong> Semantic distance between a derivation and its baseword (Nagy &amp; Anderson, 1984) generated via GPT-4.1-mini.</li>
       <li><strong>Study 2:</strong> Crowdsourced human norms and fine-tuned LLM estimates of how many morphemes readers typically perceive in polymorphemic words.</li>
     </ul>
     <p>You can search and sort individual words below, or use the instructions to import the raw data into Python or R.</p>
@@ -44,117 +42,129 @@
 
   <!-- Tabs -->
   <div class="tabs">
-    <button class="tab-button active" onclick="openTab(0, 'dataTable1', 'Study_1_Final_Data_Semantic_Distance_Ratings.xlsx')">Study 1: Semantic Distance</button>
-    <button class="tab-button" onclick="openTab(1, 'dataTable2', 'Study_2_Final_Data_LLM_Transparency_Estimates.csv')">Study 2: LLM Estimates (Full ELP)</button>
-    <button class="tab-button" onclick="openTab(2, 'dataTable3', 'Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.xlsx')">Study 2: Human Crowdsourced</button>
+    <button class="tab-button active" onclick="openTab(0)">Study 1: Semantic Distance</button>
+    <button class="tab-button" onclick="openTab(1)">Study 2: LLM Estimates (Full ELP)</button>
+    <button class="tab-button" onclick="openTab(2)">Study 2: Human Crowdsourced</button>
   </div>
 
   <!-- Tab Contents -->
   <div id="tab0" class="tab-content active">
     <div class="table-container">
+      <div id="loading0" class="loading">Loading Study 1 data…</div>
       <table id="dataTable1" class="display" style="width:100%"></table>
     </div>
   </div>
-  
+
   <div id="tab1" class="tab-content">
     <div class="table-container">
+      <div id="loading1" class="loading">Loading Study 2 LLM data…</div>
       <table id="dataTable2" class="display" style="width:100%"></table>
     </div>
   </div>
 
   <div id="tab2" class="tab-content">
     <div class="table-container">
+      <div id="loading2" class="loading">Loading Crowdsourced data…</div>
       <table id="dataTable3" class="display" style="width:100%"></table>
     </div>
   </div>
 
   <!-- How to Access Data -->
   <div class="instructions">
-    <h2>How to Access & Use This Data</h2>
-
+    <h2>How to Access &amp; Use This Data</h2>
     <h3>1. Download Raw Files</h3>
     <p>
-       <a href="Study_1_Final_Data_Semantic_Distance_Ratings.xlsx" download>↓ Download Study 1 (Semantic Distance)</a><br>
-       <a href="Study_2_Final_Data_LLM_Transparency_Estimates.csv" download>↓ Download Study 2 (LLM Estimates)</a><br>
-       <a href="Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.xlsx" download>↓ Download Study 2 (Crowdsourced)</a>
+      <a href="Study_1_Final_Data_Semantic_Distance_Ratings.csv" download>↓ Download Study 1 (Semantic Distance)</a><br>
+      <a href="Study_2_Final_Data_LLM_Transparency_Estimates.csv" download>↓ Download Study 2 (LLM Estimates)</a><br>
+      <a href="Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv" download>↓ Download Study 2 (Crowdsourced)</a>
     </p>
 
     <h3>2. Load in Python (pandas)</h3>
     <pre><code>import pandas as pd
-# Load the CSV file
-df = pd.read_csv("https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv")
-print(df.head())</code></pre>
+
+df1 = pd.read_csv("https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_1_Final_Data_Semantic_Distance_Ratings.csv")
+df2 = pd.read_csv("https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv")
+print(df1.head())
+print(df2.head())</code></pre>
 
     <h3>3. Load in R</h3>
     <pre><code>library(readr)
-# Load the CSV file
-df <- read_csv("https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv")
-head(df)</code></pre>
+
+df1 <- read_csv("https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_1_Final_Data_Semantic_Distance_Ratings.csv")
+df2 <- read_csv("https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv")
+head(df1)</code></pre>
   </div>
 
-  <!-- JavaScript to Handle Tabs and Load DataTables -->
-  <script>
-    // State tracker to ensure we only load data once per tab
-    const loadedTabs = {};
+<script>
+  const loadedTabs = {};
 
-    function openTab(tabIndex, tableId, fileUrl) {
-      // Manage tab UI active states
-      document.querySelectorAll('.tab-content').forEach((el, index) => {
-        el.style.display = index === tabIndex ? 'block' : 'none';
-      });
-      document.querySelectorAll('.tab-button').forEach((el, index) => {
-        el.classList.toggle('active', index === tabIndex);
-      });
+  function openTab(tabIndex) {
+    // UI
+    document.querySelectorAll('.tab-content').forEach((el, i) => {
+      el.style.display = i === tabIndex ? 'block' : 'none';
+      el.classList.toggle('active', i === tabIndex);
+    });
+    document.querySelectorAll('.tab-button').forEach((el, i) => {
+      el.classList.toggle('active', i === tabIndex);
+    });
 
-      // Load data if not already loaded
-      if (!loadedTabs[tabIndex]) {
-        loadData(fileUrl, tableId);
-        loadedTabs[tabIndex] = true;
-      }
+    // Load data only once
+    if (loadedTabs[tabIndex]) return;
+
+    if (tabIndex === 0) {
+      loadCSV("Study_1_Final_Data_Semantic_Distance_Ratings.csv", "dataTable1", "loading0");
+    } else if (tabIndex === 1) {
+      loadCSV("Study_2_Final_Data_LLM_Transparency_Estimates.csv", "dataTable2", "loading1");
+    } else if (tabIndex === 2) {
+      loadCSV("Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv", "dataTable3", "loading2");
     }
 
-    async function loadData(url, tableId) {
-      try {
-        const response = await fetch(url);
-        const arrayBuffer = await response.arrayBuffer();
-        
-        // Parse file using SheetJS
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        
-        // Convert sheet to JSON array of arrays (header row = first element)
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        
-        if (jsonData.length === 0) return;
+    loadedTabs[tabIndex] = true;
+  }
 
-        // Extract headers
-        const columns = Object.keys(jsonData[0]).map(key => ({
-            title: key,
-            data: key,
-            defaultContent: "" // Handle missing values gracefully
+  function loadCSV(url, tableId, loadingId) {
+    Papa.parse(url, {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        const data = results.data;
+        if (!data || data.length === 0) {
+          document.getElementById(loadingId).innerHTML = "No data found in file.";
+          return;
+        }
+
+        // Get column names from the first row
+        const columns = Object.keys(data[0]).map(key => ({
+          title: key,
+          data: key,
+          defaultContent: ""
         }));
 
-        // Initialize DataTable
+        document.getElementById(loadingId).style.display = "none";
+
         $(`#${tableId}`).DataTable({
-          data: jsonData,
+          data: data,
           columns: columns,
           pageLength: 25,
-          deferRender: true, // Speeds up loading for large datasets
-          order: [] // Preserves original spreadsheet order initially
+          lengthMenu: [15, 25, 50, 100],
+          deferRender: true,
+          order: []
         });
-
-      } catch (error) {
-        console.error("Error loading file: ", error);
-        $(`#${tableId}`).html('<tr><td>Error loading data. Make sure you are viewing this via a web server (like GitHub Pages) and the files are in the same folder.</td></tr>');
+      },
+      error: function(err) {
+        console.error(err);
+        document.getElementById(loadingId).innerHTML = 
+          `<span style="color:#c53030">Error loading ${url}. Check that the file exists in the same folder.</span>`;
       }
-    }
-
-    // Initialize the first tab on load
-    $(document).ready(function() {
-      openTab(0, 'dataTable1', 'Study_1_Final_Data_Semantic_Distance_Ratings.xlsx');
     });
-  </script>
+  }
+
+  // Load first tab on page load
+  $(document).ready(function() {
+    openTab(0);
+  });
+</script>
 
 </body>
 </html>
