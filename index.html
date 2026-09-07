@@ -4,167 +4,201 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Morphological Transparency Norms Dashboard</title>
-
+  
+  <!-- SheetJS for reading Excel/CSV files -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- jQuery & DataTables for searchable, sortable tables -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.min.css">
   <script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-
+  
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 1200px; margin: 0 auto; padding: 20px; }
     h1 { color: #1e3a8a; }
-    .summary, .instructions { background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
+    .summary, .instructions, .filter-box { background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
     .tabs { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; flex-wrap: wrap; }
     .tab-button { padding: 10px 15px; border: none; background: #e2e8f0; cursor: pointer; border-radius: 5px; font-weight: bold; }
     .tab-button.active { background: #1e3a8a; color: white; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
     .table-container { overflow-x: auto; margin-top: 10px; }
-    .loading { padding: 30px; text-align: center; color: #666; }
     pre { background: #1e293b; color: #f8fafc; padding: 15px; border-radius: 5px; overflow-x: auto; }
     a { color: #3b82f6; text-decoration: none; }
     a:hover { text-decoration: underline; }
+    
+    /* Filter UI Styles */
+    .filter-group { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+    .filter-group label { font-weight: bold; color: #1e3a8a; }
+    .filter-group input { padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; width: 80px; }
   </style>
 </head>
 <body>
 
-  <h1>Morphological Transparency Norms Dashboard</h1>
-
+  <h1>Morphological Transparency Norms: Estimates from LLMs and Crowdsourcing</h1>
+  
   <div class="summary">
     <h2>Project Summary</h2>
     <p>This dataset provides large-scale estimates of semantic transparency and perceived morphological structure for English polymorphemic words.</p>
     <ul>
-      <li><strong>Study 1:</strong> Semantic distance between a derivation and its baseword (Nagy &amp; Anderson, 1984) generated via GPT-4.1-mini.</li>
-      <li><strong>Study 2:</strong> Crowdsourced human norms and fine-tuned LLM estimates of how many morphemes readers typically perceive in polymorphemic words.</li>
+      <li><strong>Study 1:</strong> Semantic distance between a derivation and its baseword (Nagy & Anderson, 1984).</li>
+      <li><strong>Study 2:</strong> Crowdsourced human norms and fine-tuned LLM estimates of perceived morphemes.</li>
     </ul>
-    <p>You can search and sort individual words below, or use the instructions to import the raw data into Python or R.</p>
   </div>
 
   <!-- Tabs -->
   <div class="tabs">
-    <button class="tab-button active" onclick="openTab(0)">Study 1: Semantic Distance</button>
-    <button class="tab-button" onclick="openTab(1)">Study 2: LLM Estimates (Full ELP)</button>
-    <button class="tab-button" onclick="openTab(2)">Study 2: Human Crowdsourced</button>
+    <button class="tab-button active" onclick="openTab(0, 'dataTable1', 'Study_1_Final_Data_Semantic_Distance_Ratings.csv')">Study 1: Semantic Distance (between baseword-word, 0-5 scale)</button>
+    <button class="tab-button" onclick="openTab(1, 'dataTable2', 'Study_2_Final_Data_LLM_Transparency_Estimates.csv')">Study 2: LLM Estimates (Perceived number of morphemes versus actual number)</button>
+    <button class="tab-button" onclick="openTab(2, 'dataTable3', 'Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv')">Study 2: Human Crowdsourced (Perceived number of morphemes versus actual number)</button>
+  </div>
+
+  <!-- Custom Number Filters -->
+  <div class="filter-box">
+    <h3>Data Filters</h3>
+    <p style="font-size: 0.9em; color: #64748b; margin-top: -10px; margin-bottom: 15px;">
+      Use the DataTables search bar below to find specific words. Use these boxes to filter by specific transparency ranges. Leave blank to clear filter.
+    </p>
+    
+    <!-- Tab 1 Filter -->
+    <div id="filterTab0" class="filter-group">
+      <label>Semantic Distance Range (SEM 0-5):</label>
+      <input type="number" id="minSem" placeholder="Min" step="1" min="0" max="5">
+      <span>to</span>
+      <input type="number" id="maxSem" placeholder="Max" step="1" min="0" max="5">
+    </div>
+
+    <!-- Tab 2 & 3 Filter -->
+    <div id="filterTab1_2" class="filter-group" style="display: none;">
+      <label>Absolute Discrepancy Range:</label>
+      <input type="number" id="minAbs" placeholder="Min" step="0.1" min="0">
+      <span>to</span>
+      <input type="number" id="maxAbs" placeholder="Max" step="0.1" min="0">
+    </div>
   </div>
 
   <!-- Tab Contents -->
-  <div id="tab0" class="tab-content active">
-    <div class="table-container">
-      <div id="loading0" class="loading">Loading Study 1 data…</div>
-      <table id="dataTable1" class="display" style="width:100%"></table>
-    </div>
-  </div>
-
-  <div id="tab1" class="tab-content">
-    <div class="table-container">
-      <div id="loading1" class="loading">Loading Study 2 LLM data…</div>
-      <table id="dataTable2" class="display" style="width:100%"></table>
-    </div>
-  </div>
-
-  <div id="tab2" class="tab-content">
-    <div class="table-container">
-      <div id="loading2" class="loading">Loading Crowdsourced data…</div>
-      <table id="dataTable3" class="display" style="width:100%"></table>
-    </div>
-  </div>
+  <div id="tab0" class="tab-content active"><div class="table-container"><table id="dataTable1" class="display" style="width:100%"></table></div></div>
+  <div id="tab1" class="tab-content"><div class="table-container"><table id="dataTable2" class="display" style="width:100%"></table></div></div>
+  <div id="tab2" class="tab-content"><div class="table-container"><table id="dataTable3" class="display" style="width:100%"></table></div></div>
 
   <!-- How to Access Data -->
   <div class="instructions">
-    <h2>How to Access &amp; Use This Data</h2>
-    <h3>1. Download Raw Files</h3>
+    <h2>How to Access & Use This Data</h2>
     <p>
-      <a href="Study_1_Final_Data_Semantic_Distance_Ratings.csv" download>↓ Download Study 1 (Semantic Distance)</a><br>
-      <a href="Study_2_Final_Data_LLM_Transparency_Estimates.csv" download>↓ Download Study 2 (LLM Estimates)</a><br>
-      <a href="Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv" download>↓ Download Study 2 (Crowdsourced)</a>
+       <a href="Study_1_Final_Data_Semantic_Distance_Ratings.csv" download>↓ Download Study 1</a> | 
+       <a href="Study_2_Final_Data_LLM_Transparency_Estimates.csv" download>↓ Download Study 2 LLM</a> | 
+       <a href="Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv" download>↓ Download Study 2 Crowdsourced</a>
     </p>
-
-    <h3>2. Load in Python (pandas)</h3>
-    <pre><code>import pandas as pd
-
-df1 = pd.read_csv("https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_1_Final_Data_Semantic_Distance_Ratings.csv")
-df2 = pd.read_csv("https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv")
-print(df1.head())
-print(df2.head())</code></pre>
-
-    <h3>3. Load in R</h3>
-    <pre><code>library(readr)
-
-df1 <- read_csv("https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_1_Final_Data_Semantic_Distance_Ratings.csv")
-df2 <- read_csv("https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv")
-head(df1)</code></pre>
   </div>
 
-<script>
-  const loadedTabs = {};
+  <script>
+    const loadedTabs = {};
+    const columnIndexes = {}; // Stores dynamically found column indexes for filtering
 
-  function openTab(tabIndex) {
-    // UI
-    document.querySelectorAll('.tab-content').forEach((el, i) => {
-      el.style.display = i === tabIndex ? 'block' : 'none';
-      el.classList.toggle('active', i === tabIndex);
+    // Custom DataTables Filter Logic
+    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+      let tableId = settings.nTable.id;
+
+      // Filter for Tab 1: Semantic Distance
+      if (tableId === 'dataTable1' && columnIndexes.semantic !== undefined) {
+        let min = parseFloat($('#minSem').val());
+        let max = parseFloat($('#maxSem').val());
+        let semValue = parseFloat(data[columnIndexes.semantic]) || 0;
+
+        if ((isNaN(min) && isNaN(max)) ||
+            (isNaN(min) && semValue <= max) ||
+            (min <= semValue && isNaN(max)) ||
+            (min <= semValue && semValue <= max)) {
+          return true;
+        }
+        return false;
+      }
+
+      // Filter for Tabs 2 & 3: Absolute Discrepancy
+      if ((tableId === 'dataTable2' || tableId === 'dataTable3') && columnIndexes[tableId + '_abs'] !== undefined) {
+        let min = parseFloat($('#minAbs').val());
+        let max = parseFloat($('#maxAbs').val());
+        let absValue = parseFloat(data[columnIndexes[tableId + '_abs']]) || 0;
+
+        if ((isNaN(min) && isNaN(max)) ||
+            (isNaN(min) && absValue <= max) ||
+            (min <= absValue && isNaN(max)) ||
+            (min <= absValue && absValue <= max)) {
+          return true;
+        }
+        return false;
+      }
+
+      return true; // If no conditions are met, show the row
     });
-    document.querySelectorAll('.tab-button').forEach((el, i) => {
-      el.classList.toggle('active', i === tabIndex);
+
+    // Redraw tables when filter inputs change
+    $('#minSem, #maxSem, #minAbs, #maxAbs').on('keyup change', function() {
+      if ($('#dataTable1').hasClass('dataTable')) $('#dataTable1').DataTable().draw();
+      if ($('#dataTable2').hasClass('dataTable')) $('#dataTable2').DataTable().draw();
+      if ($('#dataTable3').hasClass('dataTable')) $('#dataTable3').DataTable().draw();
     });
 
-    // Load data only once
-    if (loadedTabs[tabIndex]) return;
+    // Tab switching logic
+    function openTab(tabIndex, tableId, fileUrl) {
+      document.querySelectorAll('.tab-content').forEach((el, index) => el.style.display = index === tabIndex ? 'block' : 'none');
+      document.querySelectorAll('.tab-button').forEach((el, index) => el.classList.toggle('active', index === tabIndex));
+      
+      // Toggle visibility of the correct filter input boxes
+      if(tabIndex === 0) {
+        $('#filterTab0').show();
+        $('#filterTab1_2').hide();
+      } else {
+        $('#filterTab0').hide();
+        $('#filterTab1_2').show();
+      }
 
-    if (tabIndex === 0) {
-      loadCSV("Study_1_Final_Data_Semantic_Distance_Ratings.csv", "dataTable1", "loading0");
-    } else if (tabIndex === 1) {
-      loadCSV("Study_2_Final_Data_LLM_Transparency_Estimates.csv", "dataTable2", "loading1");
-    } else if (tabIndex === 2) {
-      loadCSV("Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv", "dataTable3", "loading2");
+      if (!loadedTabs[tabIndex]) {
+        loadData(fileUrl, tableId);
+        loadedTabs[tabIndex] = true;
+      }
     }
 
-    loadedTabs[tabIndex] = true;
-  }
+    async function loadData(url, tableId) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("File not found");
+        
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
 
-  function loadCSV(url, tableId, loadingId) {
-    Papa.parse(url, {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      complete: function(results) {
-        const data = results.data;
-        if (!data || data.length === 0) {
-          document.getElementById(loadingId).innerHTML = "No data found in file.";
-          return;
+        if (jsonData.length === 0) return;
+
+        // Dynamically find the column index for filtering based on exact column names
+        const headerRow = jsonData[0];
+        if (tableId === 'dataTable1') {
+          columnIndexes.semantic = headerRow.indexOf('LLM_RATING_Semantic_Distance');
+        } else {
+          columnIndexes[tableId + '_abs'] = headerRow.indexOf('Absolute_Discrepancy');
         }
 
-        // Get column names from the first row
-        const columns = Object.keys(data[0]).map(key => ({
-          title: key,
-          data: key,
-          defaultContent: ""
-        }));
-
-        document.getElementById(loadingId).style.display = "none";
+        const columns = headerRow.map(key => ({ title: key, data: key, defaultContent: "" }));
 
         $(`#${tableId}`).DataTable({
-          data: data,
+          data: jsonData.slice(1).map(row => {
+            let rowObj = {};
+            headerRow.forEach((h, i) => rowObj[h] = row[i]);
+            return rowObj;
+          }),
           columns: columns,
           pageLength: 25,
-          lengthMenu: [15, 25, 50, 100],
-          deferRender: true,
-          order: []
+          deferRender: true
         });
-      },
-      error: function(err) {
-        console.error(err);
-        document.getElementById(loadingId).innerHTML = 
-          `<span style="color:#c53030">Error loading ${url}. Check that the file exists in the same folder.</span>`;
+
+      } catch (error) {
+        $(`#${tableId}`).html('<tr><td>Error loading data. Check console.</td></tr>');
       }
+    }
+
+    $(document).ready(function() {
+      openTab(0, 'dataTable1', 'Study_1_Final_Data_Semantic_Distance_Ratings.csv');
     });
-  }
-
-  // Load first tab on page load
-  $(document).ready(function() {
-    openTab(0);
-  });
-</script>
-
+  </script>
 </body>
 </html>
