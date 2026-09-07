@@ -15,15 +15,26 @@
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 1200px; margin: 0 auto; padding: 20px; }
     h1 { color: #1e3a8a; }
-    .summary, .instructions, .filter-box { background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
+    
+    .summary, .instructions, .filter-box, .metrics-guide { 
+      background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0; 
+    }
+    
+    h2 { color: #1e3a8a; margin-top: 0; }
+    h3 { color: #334155; margin-bottom: 5px; }
+    
+    .metrics-guide ul { margin-top: 5px; margin-bottom: 15px; padding-left: 20px; }
+    .metrics-guide li { margin-bottom: 5px; }
+
     .tabs { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; flex-wrap: wrap; }
     .tab-button { padding: 10px 15px; border: none; background: #e2e8f0; cursor: pointer; border-radius: 5px; font-weight: bold; }
     .tab-button.active { background: #1e3a8a; color: white; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
+    
     .table-container { overflow-x: auto; margin-top: 10px; }
     pre { background: #1e293b; color: #f8fafc; padding: 15px; border-radius: 5px; overflow-x: auto; }
-    a { color: #3b82f6; text-decoration: none; }
+    a { color: #3b82f6; text-decoration: none; font-weight: bold; }
     a:hover { text-decoration: underline; }
     
     /* Filter UI Styles */
@@ -45,18 +56,34 @@
     </ul>
   </div>
 
-  <!-- Tabs -->
-  <div class="tabs">
-    <button class="tab-button active" onclick="openTab(0, 'dataTable1', 'Study_1_Final_Data_Semantic_Distance_Ratings.csv')">Study 1: Semantic Distance</button>
-    <button class="tab-button" onclick="openTab(1, 'dataTable2', 'Study_2_Final_Data_LLM_Transparency_Estimates.csv')">Study 2: LLM Estimates</button>
-    <button class="tab-button" onclick="openTab(2, 'dataTable3', 'Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv')">Study 2: Human Crowdsourced</button>
+  <div class="metrics-guide">
+    <h2>Understanding the Metrics</h2>
+    
+    <h3>Study 1: Semantic Distance Scale</h3>
+    <p style="font-size: 0.9em; margin-bottom: 10px; color: #64748b;">Ratings 0–2 are considered transparent (meaning can be inferred), while 3–5 are considered opaque.</p>
+    <ul>
+      <li><strong>SEM 0:</strong> Semantically transparent.</li>
+      <li><strong>SEM 1:</strong> Meaning inferable from baseword with minimal help from context.</li>
+      <li><strong>SEM 2:</strong> Meaning inferable with reasonable help from context.</li>
+      <li><strong>SEM 3:</strong> Meaning includes features not inferable without substantial context.</li>
+      <li><strong>SEM 4:</strong> Distantly related; probably not apparent unless pointed out.</li>
+      <li><strong>SEM 5:</strong> Lack of any discernible semantic connection.</li>
+    </ul>
+
+    <h3>Study 2: Perceived Morphemes & Discrepancy</h3>
+    <ul>
+      <li><strong>Perceived Morpheme Count:</strong> The average number of meaningful word parts readers typically perceive in a word.</li>
+      <li><strong>Signed Discrepancy (Perceived minus ELP):</strong> Negative values indicate <em>undersegmentation</em> (readers perceived fewer morphemes than listed). Positive values indicate <em>oversegmentation</em> (readers perceived more morphemes).</li>
+      <li><strong>Absolute Discrepancy:</strong> The total size of the mismatch. A value of 0 means perfect alignment between human perception and lexical databases.</li>
+      <li><strong>Transparency Proximity:</strong> A 0-1 scaled score where 1 equals perfect alignment.</li>
+    </ul>
   </div>
 
   <!-- Custom Number Filters -->
   <div class="filter-box">
-    <h3>Data Filters</h3>
+    <h2>Data Filters</h2>
     <p style="font-size: 0.9em; color: #64748b; margin-top: -10px; margin-bottom: 15px;">
-      Use the DataTables search bar below to find specific words. Use these boxes to filter by specific transparency ranges. Leave blank to clear filter.
+      Use the search bar below to find specific words, or use these boxes to filter by specific transparency ranges. Leave blank to clear filter.
     </p>
     
     <!-- Tab 1 Filter -->
@@ -76,6 +103,13 @@
     </div>
   </div>
 
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-button active" onclick="openTab(0, 'dataTable1', 'Study_1_Final_Data_Semantic_Distance_Ratings.csv')">Study 1: Semantic Distance</button>
+    <button class="tab-button" onclick="openTab(1, 'dataTable2', 'Study_2_Final_Data_LLM_Transparency_Estimates.csv')">Study 2: LLM Estimates</button>
+    <button class="tab-button" onclick="openTab(2, 'dataTable3', 'Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv')">Study 2: Human Crowdsourced</button>
+  </div>
+
   <!-- Tab Contents -->
   <div id="tab0" class="tab-content active"><div class="table-container"><table id="dataTable1" class="display" style="width:100%"></table></div></div>
   <div id="tab1" class="tab-content"><div class="table-container"><table id="dataTable2" class="display" style="width:100%"></table></div></div>
@@ -84,11 +118,25 @@
   <!-- How to Access Data -->
   <div class="instructions">
     <h2>How to Access & Use This Data</h2>
-    <p>
+    <p style="margin-bottom: 20px;">
        <a href="Study_1_Final_Data_Semantic_Distance_Ratings.csv" download>↓ Download Study 1</a> | 
        <a href="Study_2_Final_Data_LLM_Transparency_Estimates.csv" download>↓ Download Study 2 LLM</a> | 
        <a href="Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv" download>↓ Download Study 2 Crowdsourced</a>
     </p>
+    
+    <h3>Load in Python (pandas)</h3>
+    <pre><code>import pandas as pd
+# Load the Study 2 LLM Estimates CSV file directly into a pandas dataframe
+url = "https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv"
+df = pd.read_csv(url)
+print(df.head())</code></pre>
+
+    <h3>Load in R (readr)</h3>
+    <pre><code>library(readr)
+# Load the Study 2 LLM Estimates CSV file directly into an R dataframe
+url <- "https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv"
+df <- read_csv(url)
+head(df)</code></pre>
   </div>
 
   <script>
