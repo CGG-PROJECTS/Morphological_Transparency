@@ -3,197 +3,247 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Morphological Transparency Norms</title>
+  <title>Morphological Transparency Lookup</title>
+
+  <!-- Tabulator -->
+  <link href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js"></script>
+
+  <!-- PapaParse for CSV -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
   <style>
     :root {
-      --primary: #1e3a8a;
-      --primary-light: #3b82f6;
-      --bg: #f8fafc;
-      --card-bg: #ffffff;
-      --text-main: #0f172a;
-      --text-muted: #64748b;
+      --primary: #1a365d;
+      --accent: #2b6cb0;
+      --bg: #f7fafc;
       --border: #e2e8f0;
-      --radius: 12px;
-      --transition: all 0.2s ease-in-out;
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
-      color: var(--text-main);
-      line-height: 1.7;
+      color: #2d3748;
+      line-height: 1.5;
     }
+
     header {
-      background: linear-gradient(135deg, var(--primary) 0%, #172554 100%);
+      background: var(--primary);
       color: white;
-      padding: 3rem 1.5rem;
+      padding: 1.4rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+    }
+
+    header h1 {
+      font-size: 1.35rem;
+      font-weight: 600;
+    }
+
+    header a {
+      color: white;
+      text-decoration: none;
+      font-size: 0.95rem;
+      opacity: 0.9;
+    }
+
+    header a:hover { opacity: 1; text-decoration: underline; }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1.25rem;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0.4rem;
+      margin-bottom: 1.25rem;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .tab-btn {
+      padding: 0.6rem 1.2rem;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      font-size: 1rem;
+      font-weight: 500;
+      color: #718096;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-btn:hover { color: var(--primary); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .info {
+      background: #ebf8ff;
+      border: 1px solid #bee3f8;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+      color: #2c5282;
+    }
+
+    .loading {
       text-align: center;
+      padding: 3rem;
+      color: #718096;
+      font-size: 1.1rem;
     }
-    header h1 { font-size: 2.25rem; margin-bottom: 1rem; }
-    header p { color: #bfdbfe; max-width: 768px; margin: 0 auto; font-size: 1.125rem; }
-    .container { max-width: 1000px; margin: -2rem auto 2rem; padding: 0 1.25rem; position: relative; }
-    .card {
-      background: var(--card-bg); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 2rem; margin-bottom: 2rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+
+    /* Make Tabulator a bit cleaner */
+    .tabulator {
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 0.92rem;
     }
-    h2 { font-size: 1.5rem; color: var(--primary); margin-bottom: 1rem; border-bottom: 2px solid #eff6ff; padding-bottom: 0.5rem; }
-    h3 { font-size: 1.25rem; margin: 1.5rem 0 1rem; }
-    p { margin-bottom: 1rem; }
-    ul { margin: 0.5rem 0 1.5rem 1.5rem; color: var(--text-muted); }
-    .btn {
-      display: inline-flex; align-items: center; background: var(--primary-light);
-      color: white; text-decoration: none; padding: 0.75rem 1.5rem;
-      border-radius: 8px; font-weight: 600; margin-right: 0.5rem; margin-bottom: 0.5rem;
+
+    .tabulator-header {
+      background: #edf2f7 !important;
+      font-weight: 600;
     }
-    .btn:hover { background: var(--primary); }
-    
-    /* Search Bar Styles */
-    .search-container { margin: 1.5rem 0; }
-    #searchInput {
-      width: 100%; padding: 1rem; font-size: 1rem; border: 2px solid var(--border);
-      border-radius: 8px; outline: none; transition: var(--transition);
-    }
-    #searchInput:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-    
-    /* Data Table Styles */
-    .table-wrapper { overflow-x: auto; max-height: 500px; border: 1px solid var(--border); border-radius: 8px; }
-    table { width: 100%; border-collapse: collapse; background: white; text-align: left; }
-    th, td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
-    th { background: #f1f5f9; position: sticky; top: 0; z-index: 10; color: var(--primary); }
-    tr:hover td { background: #f8fafc; }
-    .loading { text-align: center; padding: 2rem; color: var(--text-muted); font-style: italic; }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>Morphological Transparency Norms</h1>
-  <p>Estimating the Transparency of Polymorphemic Words: Combining LLM-predictions and Crowdsourced Ratings to Better Understand the Vocabulary Demands of Schooling</p>
+  <h1>Morphological Transparency Lookup</h1>
+  <a href="index.html">← Back to Home</a>
 </header>
 
 <div class="container">
-  
-  <!-- Interactive Database Search -->
-  <div class="card">
-    <h2>🔍 Search the Database Online</h2>
-    <p>Look up individual words to view transparency estimates, semantic distance, perceived morpheme counts, and discrepancy metrics.</p>
-    
-    <div class="search-container">
-      <input type="text" id="searchInput" placeholder="Type a word to search the database (e.g., teacher)..." disabled>
-    </div>
 
-    <div class="table-wrapper" id="tableContainer">
-      <div class="loading" id="loadingText">Loading datasets... Please make sure CSV files are in the same folder as this HTML file.</div>
-      <table id="dataTable" style="display: none;">
-        <thead id="dataHead"></thead>
-        <tbody id="dataBody"></tbody>
-      </table>
-    </div>
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('semantic')">Semantic Distance (Study 1)</button>
+    <button class="tab-btn" onclick="switchTab('perceived')">Perceived Morpheme Counts (Study 2)</button>
   </div>
 
-  <!-- Downloads -->
-  <div class="card">
-    <h2>Download the Datasets</h2>
-    <a class="btn" href="Study_1_Final_Data_Semantic_Distance_Ratings.csv" download>📥 Study 1 (Semantic Distance)</a>
-    <a class="btn" href="Study_2_Final_Data_LLM_Transparency_Estimates.csv" download>📥 Study 2 (LLM Estimates)</a>
-    <a class="btn" style="background: white; color: var(--primary-light); border: 1px solid var(--border);" href="Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv" download>📄 Study 2 (Crowdsourced)</a>
+  <!-- ==================== TAB 1: Semantic Distance ==================== -->
+  <div id="tab-semantic" class="tab-content active">
+    <div class="info">
+      <strong>Study 1</strong> – Semantic distance from base word (Nagy &amp; Anderson 0–5 scale).<br>
+      0–2 = more transparent &nbsp;|&nbsp; 3–5 = more opaque
+    </div>
+    <div id="table-semantic" class="loading">Loading Study 1 data…</div>
   </div>
 
-  <!-- About -->
-  <div class="card">
-    <h2>About these norms</h2>
-    <ul>
-      <li><strong>Study 1</strong> – Semantic distance between a derivation and its base word (Nagy & Anderson, 1984).</li>
-      <li><strong>Study 2</strong> – Alignment between the number of morphemes listed in the ELP and the number readers typically perceive (Bernstein et al., 2020).</li>
-    </ul>
+  <!-- ==================== TAB 2: Perceived Counts ==================== -->
+  <div id="tab-perceived" class="tab-content">
+    <div class="info">
+      <strong>Study 2</strong> – LLM-predicted perceived morpheme counts vs ELP-listed counts.<br>
+      Transparency Proximity closer to 1 = better alignment
+    </div>
+    <div id="table-perceived" class="loading">Loading Study 2 data…</div>
   </div>
 
 </div>
 
-<!-- JavaScript to fetch, parse, and render the CSV -->
 <script>
-  // Replace this filename with the main lookup database file you want users to search
-  const csvFileName = 'Study_2_Final_Data_LLM_Transparency_Estimates.csv'; 
-  
-  let globalData = [];
-  let headers = [];
+  // --------------------------------------------------
+  // Tab switching
+  // --------------------------------------------------
+  function switchTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-  // Simple CSV Parser
-  function parseCSV(text) {
-    const lines = text.split('\n').filter(line => line.trim() !== '');
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-    
-    const rows = lines.slice(1).map(line => {
-      // Regex to handle commas inside quotes
-      const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
-      let rowObj = {};
-      headers.forEach((header, i) => {
-        rowObj[header] = values[i] || '';
-      });
-      return rowObj;
-    });
-    
-    return { headers, rows };
-  }
-
-  // Load the CSV file
-  fetch(csvFileName)
-    .then(response => {
-      if (!response.ok) throw new Error("File not found");
-      return response.text();
-    })
-    .then(csvText => {
-      const parsed = parseCSV(csvText);
-      headers = parsed.headers;
-      globalData = parsed.rows;
-      
-      renderTable(globalData.slice(0, 50)); // Render first 50 rows initially to save performance
-      
-      document.getElementById('loadingText').style.display = 'none';
-      document.getElementById('dataTable').style.display = 'table';
-      
-      const searchInput = document.getElementById('searchInput');
-      searchInput.disabled = false;
-      searchInput.placeholder = "Type a word to search (e.g., teacher)...";
-    })
-    .catch(error => {
-      document.getElementById('loadingText').innerHTML = `
-        <strong>Note:</strong> To view the live database, this file must be hosted on a web server (like GitHub Pages) 
-        and the file <code>${csvFileName}</code> must be in the same folder. Search is currently disabled in offline mode.
-      `;
-    });
-
-  // Render Table Function
-  function renderTable(dataRows) {
-    const head = document.getElementById('dataHead');
-    const body = document.getElementById('dataBody');
-    
-    // Render Headers
-    head.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
-    
-    // Render Body
-    body.innerHTML = dataRows.map(row => {
-      return `<tr>${headers.map(h => `<td>${row[h]}</td>`).join('')}</tr>`;
-    }).join('');
-  }
-
-  // Filter functionality
-  document.getElementById('searchInput').addEventListener('keyup', function(e) {
-    const term = e.target.value.toLowerCase();
-    
-    if (term === '') {
-      renderTable(globalData.slice(0, 50)); // Reset to first 50
-      return;
+    if (tabName === 'semantic') {
+      document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+      document.getElementById('tab-semantic').classList.add('active');
+    } else {
+      document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+      document.getElementById('tab-perceived').classList.add('active');
     }
+  }
 
-    // Filter rows based on the target "Word" column (or across all columns)
-    const filtered = globalData.filter(row => {
-      // Searches across all data values in a row to see if it matches the text
-      return Object.values(row).some(val => val.toLowerCase().includes(term));
-    });
-    
-    renderTable(filtered.slice(0, 100)); // Limit to 100 results for browser performance
+  // --------------------------------------------------
+  // Load Study 1 – Semantic Distance
+  // --------------------------------------------------
+  Papa.parse("Study_1_Final_Data_Semantic_Distance_Ratings.csv", {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: function(results) {
+      const data = results.data;
+
+      new Tabulator("#table-semantic", {
+        data: data,
+        layout: "fitColumns",
+        pagination: "local",
+        paginationSize: 25,
+        paginationSizeSelector: [15, 25, 50, 100],
+        movableColumns: true,
+        initialSort: [{ column: "WORD", dir: "asc" }],
+        columns: [
+          { title: "Word", field: "WORD", headerFilter: "input", width: 180 },
+          { title: "Baseword", field: "BASEWORD", headerFilter: "input", width: 160 },
+          { 
+            title: "Semantic Distance (0–5)", 
+            field: "LLM_RATING_Semantic_Distance", 
+            headerFilter: "number",
+            headerFilterPlaceholder: "0-5",
+            width: 180,
+            hozAlign: "center"
+          }
+        ]
+      });
+    },
+    error: function(err) {
+      document.getElementById("table-semantic").innerHTML = 
+        "<p style='color:#c53030; padding:2rem;'>Could not load Study 1 CSV. Check the filename.</p>";
+    }
+  });
+
+  // --------------------------------------------------
+  // Load Study 2 – LLM Perceived Counts
+  // --------------------------------------------------
+  Papa.parse("Study_2_Final_Data_LLM_Transparency_Estimates.csv", {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: function(results) {
+      const data = results.data;
+
+      new Tabulator("#table-perceived", {
+        data: data,
+        layout: "fitDataStretch",
+        pagination: "local",
+        paginationSize: 25,
+        paginationSizeSelector: [15, 25, 50, 100],
+        movableColumns: true,
+        initialSort: [{ column: "Word", dir: "asc" }],
+        columns: [
+          { title: "Word", field: "Word", headerFilter: "input", width: 160 },
+          { title: "ELP Morphemes", field: "Nmorph_ELP", headerFilter: "number", width: 120, hozAlign: "center" },
+          { title: "LLM Predicted", field: "LLM_Predicted_Estimate", headerFilter: "number", width: 120, hozAlign: "center" },
+          { title: "Signed Discrepancy", field: "Signed_Discrepancy_GPT_minus_NMorph", headerFilter: "number", width: 140, hozAlign: "center" },
+          { title: "Absolute Discrepancy", field: "Absolute_Discrepancy", headerFilter: "number", width: 140, hozAlign: "center" },
+          { title: "Transparency Proximity", field: "Transparency_Proximity_0_1", headerFilter: "number", width: 150, hozAlign: "center" },
+          { title: "Underseg.", field: "Undersegmentation", headerFilter: "number", width: 100, hozAlign: "center" },
+          { title: "Overseg.", field: "Oversegmentation", headerFilter: "number", width: 100, hozAlign: "center" }
+        ]
+      });
+    },
+    error: function(err) {
+      document.getElementById("table-perceived").innerHTML = 
+        "<p style='color:#c53030; padding:2rem;'>Could not load Study 2 CSV. Check the filename.</p>";
+    }
   });
 </script>
 
