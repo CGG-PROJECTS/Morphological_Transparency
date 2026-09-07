@@ -6,371 +6,196 @@
   <title>Morphological Transparency Norms</title>
   <style>
     :root {
-      --primary: #1a365d;
-      --accent: #2b6cb0;
-      --bg: #f7fafc;
-      --card: #ffffff;
-      --text: #2d3748;
-      --muted: #718096;
+      --primary: #1e3a8a;
+      --primary-light: #3b82f6;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
       --border: #e2e8f0;
+      --radius: 12px;
+      --transition: all 0.2s ease-in-out;
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
       background: var(--bg);
-      color: var(--text);
-      line-height: 1.65;
+      color: var(--text-main);
+      line-height: 1.7;
     }
-
     header {
-      background: var(--primary);
+      background: linear-gradient(135deg, var(--primary) 0%, #172554 100%);
       color: white;
-      padding: 2.75rem 1.5rem;
+      padding: 3rem 1.5rem;
       text-align: center;
     }
-
-    header h1 {
-      font-size: 1.85rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
-
-    header p {
-      opacity: 0.92;
-      max-width: 640px;
-      margin: 0 auto;
-      font-size: 1.05rem;
-    }
-
-    .container {
-      max-width: 920px;
-      margin: 0 auto;
-      padding: 2.25rem 1.25rem;
-    }
-
+    header h1 { font-size: 2.25rem; margin-bottom: 1rem; }
+    header p { color: #bfdbfe; max-width: 768px; margin: 0 auto; font-size: 1.125rem; }
+    .container { max-width: 1000px; margin: -2rem auto 2rem; padding: 0 1.25rem; position: relative; }
     .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1.6rem 1.75rem;
-      margin-bottom: 1.75rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 2rem; margin-bottom: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
-
-    h2 {
-      font-size: 1.3rem;
-      color: var(--primary);
-      margin-bottom: 0.8rem;
-    }
-
-    h3 {
-      font-size: 1.1rem;
-      color: var(--primary);
-      margin: 1.4rem 0 0.6rem;
-    }
-
-    p { margin-bottom: 0.85rem; }
-
-    ul {
-      margin: 0.6rem 0 1rem 1.4rem;
-    }
-
-    li { margin-bottom: 0.35rem; }
-
-    .downloads {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.7rem;
-      margin-top: 1.1rem;
-    }
-
+    h2 { font-size: 1.5rem; color: var(--primary); margin-bottom: 1rem; border-bottom: 2px solid #eff6ff; padding-bottom: 0.5rem; }
+    h3 { font-size: 1.25rem; margin: 1.5rem 0 1rem; }
+    p { margin-bottom: 1rem; }
+    ul { margin: 0.5rem 0 1.5rem 1.5rem; color: var(--text-muted); }
     .btn {
-      display: inline-block;
-      background: var(--accent);
-      color: white;
-      text-decoration: none;
-      padding: 0.55rem 1.15rem;
-      border-radius: 6px;
-      font-size: 0.95rem;
-      font-weight: 500;
-      transition: background 0.15s;
+      display: inline-flex; align-items: center; background: var(--primary-light);
+      color: white; text-decoration: none; padding: 0.75rem 1.5rem;
+      border-radius: 8px; font-weight: 600; margin-right: 0.5rem; margin-bottom: 0.5rem;
     }
-
-    .btn:hover { background: #2c5282; }
-
-    .btn.secondary {
-      background: white;
-      color: var(--accent);
-      border: 1px solid var(--accent);
+    .btn:hover { background: var(--primary); }
+    
+    /* Search Bar Styles */
+    .search-container { margin: 1.5rem 0; }
+    #searchInput {
+      width: 100%; padding: 1rem; font-size: 1rem; border: 2px solid var(--border);
+      border-radius: 8px; outline: none; transition: var(--transition);
     }
-
-    .btn.secondary:hover {
-      background: #ebf8ff;
-    }
-
-    .note {
-      font-size: 0.92rem;
-      color: var(--muted);
-      margin-top: 0.8rem;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.92rem;
-      margin: 0.8rem 0 1.2rem;
-    }
-
-    th, td {
-      border: 1px solid var(--border);
-      padding: 0.55rem 0.7rem;
-      text-align: left;
-      vertical-align: top;
-    }
-
-    th {
-      background: #edf2f7;
-      font-weight: 600;
-      color: var(--primary);
-    }
-
-    tr:nth-child(even) { background: #f8fafc; }
-
-    code {
-      background: #edf2f7;
-      padding: 0.1rem 0.35rem;
-      border-radius: 3px;
-      font-size: 0.88em;
-    }
-
-    footer {
-      text-align: center;
-      padding: 2.25rem 1rem;
-      color: var(--muted);
-      font-size: 0.9rem;
-      border-top: 1px solid var(--border);
-      margin-top: 1.5rem;
-    }
-
-    @media (max-width: 600px) {
-      header h1 { font-size: 1.5rem; }
-      table { font-size: 0.85rem; }
-    }
+    #searchInput:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+    
+    /* Data Table Styles */
+    .table-wrapper { overflow-x: auto; max-height: 500px; border: 1px solid var(--border); border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; background: white; text-align: left; }
+    th, td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    th { background: #f1f5f9; position: sticky; top: 0; z-index: 10; color: var(--primary); }
+    tr:hover td { background: #f8fafc; }
+    .loading { text-align: center; padding: 2rem; color: var(--text-muted); font-style: italic; }
   </style>
 </head>
 <body>
 
 <header>
   <h1>Morphological Transparency Norms</h1>
-  <p>
-    Large-scale estimates of semantic transparency and perceived morphological structure<br>
-    for English polymorphemic words (Studies 1 &amp; 2)
-  </p>
+  <p>Estimating the Transparency of Polymorphemic Words: Combining LLM-predictions and Crowdsourced Ratings to Better Understand the Vocabulary Demands of Schooling</p>
 </header>
 
 <div class="container">
-
-  <!-- About -->
+  
+  <!-- Interactive Database Search -->
   <div class="card">
-    <h2>About these norms</h2>
-    <p>
-      This repository releases word-level morphological transparency estimates from two complementary studies.
-    </p>
-    <ul>
-      <li><strong>Study 1</strong> – Semantic distance between a derivation and its base word, following the classic 0–5 scale of Nagy &amp; Anderson (1984).</li>
-      <li><strong>Study 2</strong> – Alignment between the number of morphemes listed in the English Lexicon Project (ELP) and the number of morphemes that readers typically perceive (Bernstein et al., 2020).</li>
-    </ul>
-    <p>
-      The two measures capture different dimensions of morphological transparency and can be used together to identify words that differ in both semantic inferability and structural perceptibility.
-    </p>
+    <h2>🔍 Search the Database Online</h2>
+    <p>Look up individual words to view transparency estimates, semantic distance, perceived morpheme counts, and discrepancy metrics.</p>
+    
+    <div class="search-container">
+      <input type="text" id="searchInput" placeholder="Type a word to search the database (e.g., teacher)..." disabled>
+    </div>
+
+    <div class="table-wrapper" id="tableContainer">
+      <div class="loading" id="loadingText">Loading datasets... Please make sure CSV files are in the same folder as this HTML file.</div>
+      <table id="dataTable" style="display: none;">
+        <thead id="dataHead"></thead>
+        <tbody id="dataBody"></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Downloads -->
   <div class="card">
-    <h2>Download the datasets</h2>
-    <p>All files are released for research and educational use.</p>
-
-    <div class="downloads">
-      <a class="btn" href="Study_1_Final_Data_Semantic_Distance_Ratings.csv" download>
-        Study 1 – Semantic Distance
-      </a>
-      <a class="btn" href="Study_2_Final_Data_LLM_Transparency_Estimates.csv" download>
-        Study 2 – LLM Estimates
-      </a>
-      <a class="btn secondary" href="Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv" download>
-        Study 2 – Crowdsourced Ratings
-      </a>
-    </div>
-
-    <p class="note">
-      A compressed lookup file is also available:
-      <a href="morph_transparency_lookup_database_web.csv.gz">morph_transparency_lookup_database_web.csv.gz</a>
-    </p>
+    <h2>Download the Datasets</h2>
+    <a class="btn" href="Study_1_Final_Data_Semantic_Distance_Ratings.csv" download>📥 Study 1 (Semantic Distance)</a>
+    <a class="btn" href="Study_2_Final_Data_LLM_Transparency_Estimates.csv" download>📥 Study 2 (LLM Estimates)</a>
+    <a class="btn" style="background: white; color: var(--primary-light); border: 1px solid var(--border);" href="Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv" download>📄 Study 2 (Crowdsourced)</a>
   </div>
 
-  <!-- Data Dictionary -->
+  <!-- About -->
   <div class="card">
-    <h2>Data Dictionary</h2>
-
-    <h3>Study 1 – Semantic Distance Ratings</h3>
-    <p>File: <code>Study_1_Final_Data_Semantic_Distance_Ratings.csv</code></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Variable</th>
-          <th>Meaning</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>WORD</code></td>
-          <td>Target polymorphemic word</td>
-        </tr>
-        <tr>
-          <td><code>BASEWORD</code></td>
-          <td>Immediate base / ancestor of the target word</td>
-        </tr>
-        <tr>
-          <td><code>LLM_RATING_Semantic_Distance</code></td>
-          <td>GPT-4.1-mini rating on the Nagy &amp; Anderson (1984) 0–5 scale.<br>
-              0–2 = transparent · 3–5 = opaque</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <h3>Study 2 – LLM Transparency Estimates</h3>
-    <p>File: <code>Study_2_Final_Data_LLM_Transparency_Estimates.csv</code><br>
-    Fine-tuned GPT-4.1-mini predictions trained on the crowdsourced data and extended to the full ELP.</p>
-    <table>
-      <thead>
-        <tr>
-          <th>Variable</th>
-          <th>Meaning</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>Word</code></td>
-          <td>Target polymorphemic word</td>
-        </tr>
-        <tr>
-          <td><code>Nmorph_ELP</code></td>
-          <td>Number of morphemes listed in the English Lexicon Project (or supplemented source)</td>
-        </tr>
-        <tr>
-          <td><code>LLM_Predicted_Estimate</code></td>
-          <td>Predicted number of morphemes people would typically perceive</td>
-        </tr>
-        <tr>
-          <td><code>Signed_Discrepancy_GPT_minus_NMorph</code></td>
-          <td>LLM estimate − ELP count.<br>
-              Positive = oversegmentation · Negative = undersegmentation</td>
-        </tr>
-        <tr>
-          <td><code>Absolute_Discrepancy</code></td>
-          <td>Absolute size of the mismatch (|Signed Discrepancy|)</td>
-        </tr>
-        <tr>
-          <td><code>Transparency_Proximity_0_1</code></td>
-          <td>1 / (1 + Absolute_Discrepancy).<br>
-              1 = perfect alignment · lower values = greater mismatch</td>
-        </tr>
-        <tr>
-          <td><code>Undersegmentation</code></td>
-          <td>Amount by which the model predicts fewer morphemes than ELP (0 = none)</td>
-        </tr>
-        <tr>
-          <td><code>Oversegmentation</code></td>
-          <td>Amount by which the model predicts more morphemes than ELP (0 = none)</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <h3>Study 2 – Crowdsourced Morpheme Counting Task</h3>
-    <p>File: <code>Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv</code><br>
-    Human ratings collected from 176 adult participants (BLUP-adjusted).</p>
-    <table>
-      <thead>
-        <tr>
-          <th>Variable</th>
-          <th>Meaning</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>Stimulus</code></td>
-          <td>Target word</td>
-        </tr>
-        <tr>
-          <td><code>ELP_N_morphs</code></td>
-          <td>Number of morphemes listed for the word in ELP (or supplemented source)</td>
-        </tr>
-        <tr>
-          <td><code>BLUP_Estimated_Score</code> / <code>BLUP_Adjusted_Morpheme_Count</code></td>
-          <td>Participant-adjusted perceived morphological complexity from the BLUP model</td>
-        </tr>
-        <tr>
-          <td><code>Signed_Discrepancy_BLUP_minus_ELP</code></td>
-          <td>Perceived count − ELP count.<br>
-              Positive = participants perceived more morphemes · Negative = fewer</td>
-        </tr>
-        <tr>
-          <td><code>Absolute_Discrepancy</code></td>
-          <td>Absolute distance between BLUP-estimated perceived count and ELP-listed count</td>
-        </tr>
-        <tr>
-          <td><code>Transparency_Proximity_0_1</code></td>
-          <td>1 / (1 + Absolute_Discrepancy). Higher values = closer alignment</td>
-        </tr>
-        <tr>
-          <td><code>Undersegmentation</code></td>
-          <td>Amount by which participants perceived fewer morphemes than ELP (0 = none)</td>
-        </tr>
-        <tr>
-          <td><code>Oversegmentation</code></td>
-          <td>Amount by which participants perceived more morphemes than ELP (0 = none)</td>
-        </tr>
-        <tr>
-          <td><code>BLUP_Rounded</code></td>
-          <td>BLUP estimate rounded to the nearest whole morpheme</td>
-        </tr>
-        <tr>
-          <td><code>N</code> / <code>Crowdsourced_N</code></td>
-          <td>Number of valid participant ratings for the word</td>
-        </tr>
-        <tr>
-          <td><code>Raw_Mean</code> / <code>Crowdsourced_Mean_Morpheme_Count</code></td>
-          <td>Unadjusted mean of participant ratings</td>
-        </tr>
-        <tr>
-          <td><code>Raw_SD</code> / <code>Crowdsourced_Raw_SD</code></td>
-          <td>Standard deviation of the raw ratings</td>
-        </tr>
-        <tr>
-          <td><code>Item_Rest_Cor</code></td>
-          <td>Diagnostic correlation between ratings for this word and participants’ average ratings on other words</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Citation -->
-  <div class="card">
-    <h2>How to cite</h2>
-    <p>
-      [Your Name(s)]. (2026). <em>Morphological transparency norms for English polymorphemic words</em> [Data set]. GitHub.<br>
-      https://github.com/CGG-PROJECTS/Morphological_Transparency
-    </p>
+    <h2>About these norms</h2>
+    <ul>
+      <li><strong>Study 1</strong> – Semantic distance between a derivation and its base word (Nagy & Anderson, 1984).</li>
+      <li><strong>Study 2</strong> – Alignment between the number of morphemes listed in the ELP and the number readers typically perceive (Bernstein et al., 2020).</li>
+    </ul>
   </div>
 
 </div>
 
-<footer>
-  Morphological Transparency Project · 2026<br>
-  Data available for research and educational use
-</footer>
+<!-- JavaScript to fetch, parse, and render the CSV -->
+<script>
+  // Replace this filename with the main lookup database file you want users to search
+  const csvFileName = 'Study_2_Final_Data_LLM_Transparency_Estimates.csv'; 
+  
+  let globalData = [];
+  let headers = [];
+
+  // Simple CSV Parser
+  function parseCSV(text) {
+    const lines = text.split('\n').filter(line => line.trim() !== '');
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    
+    const rows = lines.slice(1).map(line => {
+      // Regex to handle commas inside quotes
+      const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
+      let rowObj = {};
+      headers.forEach((header, i) => {
+        rowObj[header] = values[i] || '';
+      });
+      return rowObj;
+    });
+    
+    return { headers, rows };
+  }
+
+  // Load the CSV file
+  fetch(csvFileName)
+    .then(response => {
+      if (!response.ok) throw new Error("File not found");
+      return response.text();
+    })
+    .then(csvText => {
+      const parsed = parseCSV(csvText);
+      headers = parsed.headers;
+      globalData = parsed.rows;
+      
+      renderTable(globalData.slice(0, 50)); // Render first 50 rows initially to save performance
+      
+      document.getElementById('loadingText').style.display = 'none';
+      document.getElementById('dataTable').style.display = 'table';
+      
+      const searchInput = document.getElementById('searchInput');
+      searchInput.disabled = false;
+      searchInput.placeholder = "Type a word to search (e.g., teacher)...";
+    })
+    .catch(error => {
+      document.getElementById('loadingText').innerHTML = `
+        <strong>Note:</strong> To view the live database, this file must be hosted on a web server (like GitHub Pages) 
+        and the file <code>${csvFileName}</code> must be in the same folder. Search is currently disabled in offline mode.
+      `;
+    });
+
+  // Render Table Function
+  function renderTable(dataRows) {
+    const head = document.getElementById('dataHead');
+    const body = document.getElementById('dataBody');
+    
+    // Render Headers
+    head.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+    
+    // Render Body
+    body.innerHTML = dataRows.map(row => {
+      return `<tr>${headers.map(h => `<td>${row[h]}</td>`).join('')}</tr>`;
+    }).join('');
+  }
+
+  // Filter functionality
+  document.getElementById('searchInput').addEventListener('keyup', function(e) {
+    const term = e.target.value.toLowerCase();
+    
+    if (term === '') {
+      renderTable(globalData.slice(0, 50)); // Reset to first 50
+      return;
+    }
+
+    // Filter rows based on the target "Word" column (or across all columns)
+    const filtered = globalData.filter(row => {
+      // Searches across all data values in a row to see if it matches the text
+      return Object.values(row).some(val => val.toLowerCase().includes(term));
+    });
+    
+    renderTable(filtered.slice(0, 100)); // Limit to 100 results for browser performance
+  });
+</script>
 
 </body>
 </html>
