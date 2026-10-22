@@ -415,12 +415,44 @@ head(df)</code></pre>
       return a;
     }
 
-    function getWordFieldForTab(tableId, row) {
-      if (tableId === 'dataTable1') return row["WORD"] ?? row["word"] ?? row["Word"] ?? "";
-      if (tableId === 'dataTable2' || tableId === 'dataTable3') return row["word"] ?? row["WORD"] ?? row["stimulus"] ?? row["Word"] ?? "";
-      return row["word"] ?? row["WORD"] ?? row["stimulus"] ?? "";
-    }
+  function getFieldCaseInsensitive(row, candidateNames) {
+  const keys = Object.keys(row || {});
+  const keyMap = {};
+  keys.forEach(k => keyMap[String(k).toLowerCase().trim()] = k);
 
+  for (const c of candidateNames) {
+    const hit = keyMap[String(c).toLowerCase().trim()];
+    if (hit !== undefined) {
+      const val = row[hit];
+      if (val !== undefined && val !== null && String(val).trim() !== "") {
+        return String(val).trim();
+      }
+    }
+  }
+  return "";
+}
+
+function getWordFieldForTab(tableId, row) {
+  // Try all likely word column names, case-insensitive
+  const wordVal = getFieldCaseInsensitive(row, [
+    "word",
+    "word_lowercase",
+    "stimulus",
+    "Stimulus",
+    "ortho",
+    "item",
+    "type",
+    "WORD"
+  ]);
+
+  if (wordVal) return wordVal;
+
+  // fallback for Study 1 if somehow word is absent
+  const baseVal = getFieldCaseInsensitive(row, ["baseword", "BASEWORD"]);
+  if (baseVal) return baseVal;
+
+  return "(no word)";
+}
     function getBadgeForRow(tableId, row) {
       if (tableId === 'dataTable1') {
         const v = parseFloat(row["LLM_RATING_Semantic_Distance"]);
