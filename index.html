@@ -220,11 +220,11 @@
       <li><strong>SEM 5:</strong> No clear semantic connection.</li>
     </ul>
 
-    <h3>Study 2: Morpheme Count Discrepancy</h3>
+    <h3>Study 2: Morpheme Count Transparency</h3>
     <ul>
-      <li><strong>Signed discrepancy:</strong> Perceived minus ELP count (negative = undersegmentation; positive = oversegmentation).</li>
-      <li><strong>Absolute discrepancy:</strong> Mismatch size; 0 = transparent match.</li>
-      <li><strong>Transparency proximity (0–1):</strong> 1 = perfect alignment.</li>
+      <li><strong>Absolute_Discrepancy (main indicator):</strong> 0 = transparent match; higher values = more opaque mismatch.</li>
+      <li><strong>Signed_Discrepancy:</strong> Perceived minus ELP count (negative = undersegmentation; positive = oversegmentation).</li>
+      <li><strong>Transparency_Proximity_0_1:</strong> 1 = perfect alignment; lower values = less transparent.</li>
       <li><strong>Child_Database_Sources:</strong> Indicates where a word occurs in child/school-related print.</li>
     </ul>
 
@@ -234,7 +234,8 @@
       <li><strong>CYP_LEX:</strong> Children and Young People’s Books Lexicon (Korochkina et al., 2024).</li>
       <li><strong>CPB_Lex:</strong> Children’s Picture Books Lexicon (Green et al., 2024).</li>
       <li><strong>Core_Reading_Programs:</strong> Vocabulary in major US elementary reading programs (Graves et al., 2019).</li>
-      <li><strong>Living_Word_Vocab / VXGL:</strong> Grade-level vocabulary resources.</li>
+      <li><strong>Living_Word_Vocab:</strong> Dale & O’Rourke (1981) grade-linked vocabulary resource.</li>
+      <li><strong>VXGL:</strong> Grade-level vocabulary mapping resource (Flor et al., 2025).</li>
     </ul>
   </div>
 
@@ -271,7 +272,7 @@
     </div>
 
     <div id="filterTab1_2" class="filter-group" style="display: none;">
-      <label>Absolute Discrepancy Range:</label>
+      <label>Absolute Discrepancy Range (higher = more opaque):</label>
       <input type="number" id="minAbs" placeholder="Min" step="0.1" min="0">
       <span>to</span>
       <input type="number" id="maxAbs" placeholder="Max" step="0.1" min="0">
@@ -317,13 +318,13 @@
     </p>
 
     <h3>Load in Python (pandas)</h3>
-    <pre><code>import pandas as pd
+<pre><code>import pandas as pd
 url = "https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv"
 df = pd.read_csv(url)
 print(df.head())</code></pre>
 
     <h3>Load in R (readr)</h3>
-    <pre><code>library(readr)
+<pre><code>library(readr)
 url <- "https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv"
 df <- read_csv(url)
 head(df)</code></pre>
@@ -332,6 +333,7 @@ head(df)</code></pre>
   <script>
     const loadedTabs = {};
     const columnIndexes = {};
+    const metricColumnName = {}; // <-- robust chart metric key per table
     let activeTabIndex = 0;
     let chartInstance = null;
 
@@ -342,6 +344,15 @@ head(df)</code></pre>
         if (idx !== -1) return idx;
       }
       return -1;
+    }
+
+    function findHeaderName(headerRow, candidates) {
+      const lower = headerRow.map(h => String(h).toLowerCase().trim());
+      for (const c of candidates) {
+        const idx = lower.indexOf(c.toLowerCase());
+        if (idx !== -1) return headerRow[idx];
+      }
+      return null;
     }
 
     function parseCSVText(text) {
@@ -364,12 +375,12 @@ head(df)</code></pre>
       }
     }
 
-    // DataTables global custom filters
+    // Global DataTables filters
     $.fn.dataTable.ext.search.push(function(settings, data) {
       const tableId = settings.nTable.id;
 
       // Study 1 SEM filter
-      if (tableId === 'dataTable1' && columnIndexes.semantic !== undefined && columnIndexes.semantic >= 0) {
+      if (tableId === 'dataTable1' && columnIndexes.semantic >= 0) {
         const min = parseFloat($('#minSem').val());
         const max = parseFloat($('#maxSem').val());
         const semValue = parseFloat(data[columnIndexes.semantic]) || 0;
@@ -384,9 +395,7 @@ head(df)</code></pre>
       }
 
       // Study 2 abs filter
-      if ((tableId === 'dataTable2' || tableId === 'dataTable3') &&
-          columnIndexes[tableId + '_abs'] !== undefined &&
-          columnIndexes[tableId + '_abs'] >= 0) {
+      if ((tableId === 'dataTable2' || tableId === 'dataTable3') && columnIndexes[tableId + '_abs'] >= 0) {
         const min = parseFloat($('#minAbs').val());
         const max = parseFloat($('#maxAbs').val());
         const absValue = parseFloat(data[columnIndexes[tableId + '_abs']]) || 0;
@@ -400,17 +409,17 @@ head(df)</code></pre>
         if (!passAbs) return false;
       }
 
-      // Study 2 LLM child filters
+      // Child filters only on Study 2 LLM tab
       if (tableId === 'dataTable2') {
         const childOnly = $('#childOnly').is(':checked');
         const selectedSource = $('#childSourceSelect').val();
 
-        if (childOnly && columnIndexes.childSources !== undefined && columnIndexes.childSources >= 0) {
+        if (childOnly && columnIndexes.childSources >= 0) {
           const src = (data[columnIndexes.childSources] || '').toString().trim();
           if (!src) return false;
         }
 
-        if (selectedSource && columnIndexes.childSources !== undefined && columnIndexes.childSources >= 0) {
+        if (selectedSource && columnIndexes.childSources >= 0) {
           const src = (data[columnIndexes.childSources] || '').toString();
           if (!src.includes(selectedSource)) return false;
         }
@@ -464,17 +473,33 @@ head(df)</code></pre>
         const headerRow = jsonData[0];
         if (!headerRow || headerRow.length === 0) throw new Error(`No header row in file: ${url}`);
 
+        // Reorder Study 2 columns (both LLM + Human):
+        // word first, absolute_discrepancy second, child sources third (if present)
+        let orderedHeaders = [...headerRow];
+        if (tableId === 'dataTable2' || tableId === 'dataTable3') {
+          const colWord = findHeaderName(headerRow, ['word', 'stimulus', 'word_lowercase']);
+          const colAbs = findHeaderName(headerRow, ['absolute_discrepancy']);
+          const colChild = findHeaderName(headerRow, ['child_database_sources']);
+
+          const preferred = [colWord, colAbs, colChild].filter(Boolean);
+          const remaining = headerRow.filter(h => !preferred.includes(h));
+          orderedHeaders = [...preferred, ...remaining];
+        }
+
+        // Metric columns for filters/KPIs/charts
         if (tableId === 'dataTable1') {
-          columnIndexes.semantic = findHeaderIndex(headerRow, ['LLM_RATING_Semantic_Distance']);
+          columnIndexes.semantic = findHeaderIndex(orderedHeaders, ['llm_rating_semantic_distance']);
+          metricColumnName[tableId] = findHeaderName(orderedHeaders, ['llm_rating_semantic_distance']);
         } else {
-          columnIndexes[tableId + '_abs'] = findHeaderIndex(headerRow, ['Absolute_Discrepancy']);
+          columnIndexes[tableId + '_abs'] = findHeaderIndex(orderedHeaders, ['absolute_discrepancy']);
+          metricColumnName[tableId] = findHeaderName(orderedHeaders, ['absolute_discrepancy']);
         }
 
         if (tableId === 'dataTable2') {
-          columnIndexes.childSources = findHeaderIndex(headerRow, ['Child_Database_Sources']);
+          columnIndexes.childSources = findHeaderIndex(orderedHeaders, ['child_database_sources']);
         }
 
-        const columns = headerRow.map(key => ({
+        const columns = orderedHeaders.map(key => ({
           title: key,
           data: key,
           defaultContent: "",
@@ -482,6 +507,7 @@ head(df)</code></pre>
             if (type === 'display') {
               const keyLower = String(key).toLowerCase();
 
+              // Study 1 semantic distance badge
               if (keyLower === 'llm_rating_semantic_distance') {
                 const val = parseFloat(data);
                 if (!isNaN(val)) {
@@ -491,6 +517,7 @@ head(df)</code></pre>
                 }
               }
 
+              // Study 2 absolute discrepancy badge
               if (keyLower === 'absolute_discrepancy') {
                 const val = parseFloat(data);
                 if (!isNaN(val)) {
@@ -501,13 +528,14 @@ head(df)</code></pre>
                 }
               }
 
+              // Child source tags
               if (keyLower === 'child_database_sources') {
                 const txt = (data || '').toString().trim();
                 if (!txt) return '';
                 return txt
                   .split(';')
                   .map(s => s.trim())
-                  .filter(s => s.length > 0)
+                  .filter(Boolean)
                   .map(s => `<span class="child-tag">${s}</span>`)
                   .join(' ');
               }
@@ -522,14 +550,22 @@ head(df)</code></pre>
           return rowObj;
         });
 
-        $(`#${tableId}`).DataTable({
+        const dtOptions = {
           data: tableData,
           columns: columns,
           pageLength: 25,
           dom: 'Bfrtip',
           buttons: ['csv', 'excel'],
           deferRender: true
-        });
+        };
+
+        // Default sort by absolute discrepancy descending on Study 2 tabs
+        if (tableId === 'dataTable2' || tableId === 'dataTable3') {
+          const absIdx = findHeaderIndex(orderedHeaders, ['absolute_discrepancy']);
+          if (absIdx >= 0) dtOptions.order = [[absIdx, 'desc']];
+        }
+
+        $(`#${tableId}`).DataTable(dtOptions);
 
         $(`#${tableId}`).on('draw.dt', function() {
           updateDashboardVisuals(tableId);
@@ -553,20 +589,28 @@ head(df)</code></pre>
 
       $('#kpiCount').text(filteredData.length.toLocaleString());
 
+      const targetCol = metricColumnName[tableId];
+      if (!targetCol) {
+        $('#kpiAvgMetric').text('0.00');
+        $('#kpiRatio').text('0%');
+        return;
+      }
+
       let totalVal = 0;
       let transparentCount = 0;
-      const targetCol = tableId === 'dataTable1' ? 'LLM_RATING_Semantic_Distance' : 'Absolute_Discrepancy';
 
       filteredData.forEach(row => {
-        const val = parseFloat(row[targetCol]) || 0;
-        totalVal += val;
+        const val = parseFloat(row[targetCol]);
+        if (!isNaN(val)) {
+          totalVal += val;
 
-        if (tableId === 'dataTable1') {
-          if (val <= 2) transparentCount++;
-        } else if (tableId === 'dataTable3') {
-          if (Math.round(val) === 0) transparentCount++;
-        } else {
-          if (val === 0) transparentCount++;
+          if (tableId === 'dataTable1') {
+            if (val <= 2) transparentCount++;
+          } else if (tableId === 'dataTable3') {
+            if (Math.round(val) === 0) transparentCount++;
+          } else {
+            if (val === 0) transparentCount++;
+          }
         }
       });
 
@@ -582,8 +626,8 @@ head(df)</code></pre>
     function renderChart(data, metricKey, tableId) {
       const canvas = document.getElementById('dynamicChart');
       if (!canvas) return;
-      const ctx = canvas.getContext('2d');
 
+      const ctx = canvas.getContext('2d');
       const counts = tableId === 'dataTable1' ? [0, 0, 0, 0, 0, 0] : [0, 0, 0, 0];
       const labels = tableId === 'dataTable1'
         ? ['SEM 0', 'SEM 1', 'SEM 2', 'SEM 3', 'SEM 4', 'SEM 5']
@@ -612,11 +656,11 @@ head(df)</code></pre>
         data: {
           labels,
           datasets: [{
-            label: tableId === 'dataTable1' ? 'Semantic Distance Frequency' : 'Discrepancy Distribution',
+            label: tableId === 'dataTable1' ? 'Semantic Distance Frequency' : 'Absolute Discrepancy Distribution',
             data: counts,
             backgroundColor: tableId === 'dataTable1'
-              ? ['#22c55e','#22c55e','#22c55e','#ef4444','#ef4444','#ef4444']
-              : ['#22c55e','#ef4444','#ef4444','#ef4444']
+              ? ['#22c55e', '#22c55e', '#22c55e', '#ef4444', '#ef4444', '#ef4444']
+              : ['#22c55e', '#ef4444', '#ef4444', '#ef4444']
           }]
         },
         options: {
