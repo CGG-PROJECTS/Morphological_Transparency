@@ -1,22 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Morphological Transparency Norms Dashboard</title>
-  
-  <!-- SheetJS for reading Excel/CSV files -->
+
+  <!-- SheetJS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <!-- jQuery & DataTables + Export Buttons -->
+
+  <!-- jQuery + DataTables -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.1.2/css/buttons.dataTables.min.css">
   <script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/buttons/3.1.2/js/dataTables.buttons.min.js"></script>
   <script src="https://cdn.datatables.net/buttons/3.1.2/js/buttons.html5.min.js"></script>
-  <!-- Chart.js for Dynamic Visualizations -->
+
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  
+
   <style>
     :root {
       --primary: #1e3a8a;
@@ -25,19 +27,35 @@
       --border-slate: #e2e8f0;
     }
 
-    body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 1280px; margin: 0 auto; padding: 20px; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
     h1 { color: var(--primary); }
     h2 { color: var(--primary); margin-top: 0; }
     h3 { color: #334155; margin-bottom: 5px; }
 
-    .summary, .instructions, .filter-box, .metrics-guide, .kpi-container { 
-      background: var(--bg-slate); padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-slate); 
+    .summary, .instructions, .filter-box, .metrics-guide, .kpi-container {
+      background: var(--bg-slate);
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border-slate);
     }
-    
-    .metrics-guide ul { margin-top: 5px; margin-bottom: 15px; padding-left: 20px; }
+
+    .metrics-guide ul {
+      margin-top: 5px;
+      margin-bottom: 15px;
+      padding-left: 20px;
+    }
+
     .metrics-guide li { margin-bottom: 5px; }
 
-    /* Dynamic KPI Section */
     .kpi-container {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -45,6 +63,7 @@
       background: #eff6ff;
       border-color: #bfdbfe;
     }
+
     .kpi-card {
       background: white;
       padding: 15px;
@@ -52,10 +71,22 @@
       border: 1px solid #dbeafe;
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .kpi-card h4 { margin: 0; font-size: 0.85em; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
-    .kpi-card .val { font-size: 1.8em; font-weight: bold; color: var(--primary); margin-top: 5px; }
 
-    /* Chart Container */
+    .kpi-card h4 {
+      margin: 0;
+      font-size: 0.85em;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .kpi-card .val {
+      font-size: 1.8em;
+      font-weight: bold;
+      color: var(--primary);
+      margin-top: 5px;
+    }
+
     .chart-box {
       background: white;
       padding: 15px;
@@ -65,62 +96,145 @@
       max-height: 320px;
     }
 
-    .tabs { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid var(--border-slate); padding-bottom: 10px; flex-wrap: wrap; }
-    .tab-button { padding: 10px 18px; border: none; background: #e2e8f0; cursor: pointer; border-radius: 6px; font-weight: 600; transition: all 0.2s; }
-    .tab-button.active { background: var(--primary); color: white; }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      border-bottom: 2px solid var(--border-slate);
+      padding-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tab-button {
+      padding: 10px 18px;
+      border: none;
+      background: #e2e8f0;
+      cursor: pointer;
+      border-radius: 6px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .tab-button.active {
+      background: var(--primary);
+      color: white;
+    }
+
     .tab-content { display: none; }
     .tab-content.active { display: block; }
-    
-    .table-container { overflow-x: auto; margin-top: 10px; }
-    pre { background: #1e293b; color: #f8fafc; padding: 15px; border-radius: 5px; overflow-x: auto; }
-    a { color: var(--primary-light); text-decoration: none; font-weight: bold; }
-    a:hover { text-decoration: underline; }
-    
-    .filter-group { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-    .filter-group label { font-weight: bold; color: var(--primary); }
-    .filter-group input { padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; width: 90px; }
 
-    /* Conditional Formatting Badge Classes */
-    .badge-transparent { background-color: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 12px; font-weight: bold; }
-    .badge-opaque { background-color: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-weight: bold; }
+    .table-container { overflow-x: auto; margin-top: 10px; }
+
+    pre {
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+
+    a {
+      color: var(--primary-light);
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    a:hover { text-decoration: underline; }
+
+    .filter-group {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .filter-group label {
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .filter-group input, .filter-group select {
+      padding: 6px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+    }
+
+    .badge-transparent {
+      background-color: #dcfce7;
+      color: #166534;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .badge-opaque {
+      background-color: #fee2e2;
+      color: #991b1b;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .child-tag {
+      background: #eef2ff;
+      color: #3730a3;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.85em;
+      font-weight: 600;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
-
   <h1>Morphological Transparency Norms Dashboard</h1>
-  
+
   <div class="summary">
     <h2>Project Summary</h2>
     <p>This dataset provides large-scale estimates of semantic transparency and perceived morphological structure for English polymorphemic words.</p>
     <ul>
       <li><strong>Study 1:</strong> Semantic distance between a derivation and its baseword (Nagy & Anderson, 1984).</li>
-      <li><strong>Study 2:</strong> Crowdsourced human norms and fine-tuned LLM estimates of perceived morphemes.</li>
+      <li><strong>Study 2:</strong> LLM and crowdsourced estimates of perceived morphemes and discrepancy from ELP-listed counts.</li>
     </ul>
   </div>
 
   <div class="metrics-guide">
     <h2>Understanding the Metrics</h2>
-    
+
     <h3>Study 1: Semantic Distance Scale</h3>
-    <p style="font-size: 0.9em; margin-bottom: 10px; color: #64748b;">Ratings 0–2 are considered transparent (meaning can be inferred), while 3–5 are considered opaque.</p>
+    <p style="font-size: 0.9em; margin-bottom: 10px; color: #64748b;">
+      Ratings 0–2 are treated as semantically transparent; 3–5 as semantically opaque.
+    </p>
     <ul>
       <li><strong>SEM 0:</strong> Semantically transparent.</li>
-      <li><strong>SEM 1:</strong> Meaning inferable from baseword with minimal help from context.</li>
-      <li><strong>SEM 2:</strong> Meaning inferable with reasonable help from context.</li>
-      <li><strong>SEM 3:</strong> Meaning includes features not inferable without substantial context.</li>
-      <li><strong>SEM 4:</strong> Distantly related; probably not apparent unless pointed out.</li>
-      <li><strong>SEM 5:</strong> Lack of any discernible semantic connection.</li>
+      <li><strong>SEM 1:</strong> Meaning inferable from baseword with minimal context.</li>
+      <li><strong>SEM 2:</strong> Meaning inferable with moderate context.</li>
+      <li><strong>SEM 3:</strong> Requires substantial context.</li>
+      <li><strong>SEM 4:</strong> Distant relation; hard to infer from base.</li>
+      <li><strong>SEM 5:</strong> No clear semantic connection.</li>
     </ul>
-    <h3>Study 2: Perceived Morphemes & Discrepancy</h3>
+
+    <h3>Study 2: Morpheme Count Discrepancy</h3>
     <ul>
-      <li><strong>Perceived Morpheme Count:</strong> The average number of meaningful word parts readers typically perceive in a word.</li>
-      <li><strong>Signed Discrepancy (Perceived minus ELP):</strong> Negative values indicate <em>undersegmentation</em> (readers perceived fewer morphemes than listed). Positive values indicate <em>oversegmentation</em> (readers perceived more morphemes).</li>
-      <li><strong>Absolute Discrepancy:</strong> The total size of the mismatch. For human crowdsourced data, continuous averages are rounded to the nearest integer: a rounded score of 0 indicates transparency, while a rounded score of 1 or higher indicates opacity.</li>
-      <li><strong>Transparency Proximity:</strong> A 0-1 scaled score where 1 equals perfect alignment.</li>
+      <li><strong>Signed discrepancy:</strong> Perceived minus ELP count (negative = undersegmentation; positive = oversegmentation).</li>
+      <li><strong>Absolute discrepancy:</strong> Mismatch size; 0 = transparent match.</li>
+      <li><strong>Transparency proximity (0–1):</strong> 1 = perfect alignment.</li>
+      <li><strong>Child_Database_Sources:</strong> Indicates where a word occurs in child/school-related print.</li>
+    </ul>
+
+    <h3>Child_Database_Sources legend</h3>
+    <ul>
+      <li><strong>COCA_Juv_Fiction:</strong> Juvenile fiction subset of COCA (Davies, 2008–).</li>
+      <li><strong>CYP_LEX:</strong> Children and Young People’s Books Lexicon (Korochkina et al., 2024).</li>
+      <li><strong>CPB_Lex:</strong> Children’s Picture Books Lexicon (Green et al., 2024).</li>
+      <li><strong>Core_Reading_Programs:</strong> Vocabulary in major US elementary reading programs (Graves et al., 2019).</li>
+      <li><strong>Living_Word_Vocab / VXGL:</strong> Grade-level vocabulary resources.</li>
     </ul>
   </div>
 
-  <!-- Dynamic KPIs -->
   <div class="kpi-container">
     <div class="kpi-card">
       <h4>Filtered Records</h4>
@@ -136,20 +250,18 @@
     </div>
   </div>
 
-  <!-- Dynamic Chart Section -->
   <div class="chart-box">
     <canvas id="dynamicChart" height="75"></canvas>
   </div>
 
-  <!-- Filters -->
   <div class="filter-box">
     <h2>Data Filters</h2>
     <p style="font-size: 0.9em; color: #64748b; margin-top: -10px; margin-bottom: 15px;">
-      Use the search bar below to find specific words, or use these boxes to filter by specific transparency ranges. Leave blank to clear filter.
+      Use text search plus range filters. Leave blank to clear.
     </p>
-    
+
     <div id="filterTab0" class="filter-group">
-      <label>Semantic Distance Range (SEM 0-5):</label>
+      <label>Semantic Distance Range (SEM 0–5):</label>
       <input type="number" id="minSem" placeholder="Min" step="1" min="0" max="5">
       <span>to</span>
       <input type="number" id="maxSem" placeholder="Max" step="1" min="0" max="5">
@@ -161,41 +273,57 @@
       <span>to</span>
       <input type="number" id="maxAbs" placeholder="Max" step="0.1" min="0">
     </div>
+
+    <!-- New Study 2 child source filters -->
+    <div id="childFilters" class="filter-group" style="display: none;">
+      <label><input type="checkbox" id="childOnly"> Child-database words only</label>
+      <label>Child source contains:</label>
+      <select id="childSourceSelect">
+        <option value="">(any)</option>
+        <option value="COCA_Juv_Fiction">COCA_Juv_Fiction</option>
+        <option value="CYP_LEX">CYP_LEX</option>
+        <option value="CPB_Lex">CPB_Lex</option>
+        <option value="Core_Reading_Programs">Core_Reading_Programs</option>
+        <option value="Living_Word_Vocab">Living_Word_Vocab</option>
+        <option value="VXGL">VXGL</option>
+      </select>
+    </div>
   </div>
 
-  <!-- Tabs -->
   <div class="tabs">
     <button class="tab-button active" onclick="openTab(0, 'dataTable1', 'Study_1_Final_Data_Semantic_Distance_Ratings.csv')">Study 1: Semantic Distance</button>
-    <button class="tab-button" onclick="openTab(1, 'dataTable2', 'Study_2_Final_Data_LLM_Transparency_Estimates.csv')">Study 2: LLM Estimates</button>
+    <button class="tab-button" onclick="openTab(1, 'dataTable2', 'Study_2_Final_Data_LLM_Transparency_Estimates_WITH_CHILD_DATABASE_FLAGS.csv')">Study 2: LLM Estimates</button>
     <button class="tab-button" onclick="openTab(2, 'dataTable3', 'Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv')">Study 2: Human Crowdsourced</button>
   </div>
 
-  <!-- Tab Contents -->
-  <div id="tab0" class="tab-content active"><div class="table-container"><table id="dataTable1" class="display" style="width:100%"></table></div></div>
-  <div id="tab1" class="tab-content"><div class="table-container"><table id="dataTable2" class="display" style="width:100%"></table></div></div>
-  <div id="tab2" class="tab-content"><div class="table-container"><table id="dataTable3" class="display" style="width:100%"></table></div></div>
+  <div id="tab0" class="tab-content active">
+    <div class="table-container"><table id="dataTable1" class="display" style="width:100%"></table></div>
+  </div>
+  <div id="tab1" class="tab-content">
+    <div class="table-container"><table id="dataTable2" class="display" style="width:100%"></table></div>
+  </div>
+  <div id="tab2" class="tab-content">
+    <div class="table-container"><table id="dataTable3" class="display" style="width:100%"></table></div>
+  </div>
 
-  <!-- How to Access Data -->
   <div class="instructions">
     <h2>How to Access & Use This Data</h2>
     <p style="margin-bottom: 20px;">
-       <a href="Study_1_Final_Data_Semantic_Distance_Ratings.csv" download>↓ Download Study 1</a> | 
-       <a href="Study_2_Final_Data_LLM_Transparency_Estimates.csv" download>↓ Download Study 2 LLM</a> | 
-       <a href="Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv" download>↓ Download Study 2 Crowdsourced</a>
+      <a href="Study_1_Final_Data_Semantic_Distance_Ratings.csv" download>↓ Download Study 1</a> |
+      <a href="Study_2_Final_Data_LLM_Transparency_Estimates_WITH_CHILD_DATABASE_FLAGS.csv" download>↓ Download Study 2 LLM (with child flags)</a> |
+      <a href="Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv" download>↓ Download Study 2 Crowdsourced</a>
     </p>
-    
+
     <h3>Load in Python (pandas)</h3>
     <pre><code>import pandas as pd
-# Load the Study 2 LLM Estimates CSV file directly into a pandas dataframe
-url = "https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv"
+url = "https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates_WITH_CHILD_DATABASE_FLAGS.csv"
 df = pd.read_csv(url)
 print(df.head())</code></pre>
 
     <h3>Load in R (readr)</h3>
     <pre><code>library(readr)
-# Load the Study 2 LLM Estimates CSV file directly into an R dataframe
-url &lt;- "https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv"
-df &lt;- read_csv(url)
+url <- "https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates_WITH_CHILD_DATABASE_FLAGS.csv"
+df <- read_csv(url)
 head(df)</code></pre>
   </div>
 
@@ -205,27 +333,67 @@ head(df)</code></pre>
     let activeTabIndex = 0;
     let chartInstance = null;
 
-    // Custom DataTables Filter Logic
+    function findHeaderIndex(headerRow, candidates) {
+      const lower = headerRow.map(h => String(h).toLowerCase().trim());
+      for (const c of candidates) {
+        const idx = lower.indexOf(c.toLowerCase());
+        if (idx !== -1) return idx;
+      }
+      return -1;
+    }
+
+    // Custom DataTables filters
     $.fn.dataTable.ext.search.push(function(settings, data) {
-      let tableId = settings.nTable.id;
-      
+      const tableId = settings.nTable.id;
+
+      // Study 1 SEM range filter
       if (tableId === 'dataTable1' && columnIndexes.semantic !== undefined) {
-        let min = parseFloat($('#minSem').val());
-        let max = parseFloat($('#maxSem').val());
-        let semValue = parseFloat(data[columnIndexes.semantic]) || 0;
-        return ((isNaN(min) && isNaN(max)) || (isNaN(min) && semValue <= max) || (min <= semValue && isNaN(max)) || (min <= semValue && semValue <= max));
+        const min = parseFloat($('#minSem').val());
+        const max = parseFloat($('#maxSem').val());
+        const semValue = parseFloat(data[columnIndexes.semantic]) || 0;
+        const passSem = (
+          (isNaN(min) && isNaN(max)) ||
+          (isNaN(min) && semValue <= max) ||
+          (min <= semValue && isNaN(max)) ||
+          (min <= semValue && semValue <= max)
+        );
+        if (!passSem) return false;
       }
 
+      // Study 2 abs discrepancy range filter
       if ((tableId === 'dataTable2' || tableId === 'dataTable3') && columnIndexes[tableId + '_abs'] !== undefined) {
-        let min = parseFloat($('#minAbs').val());
-        let max = parseFloat($('#maxAbs').val());
-        let absValue = parseFloat(data[columnIndexes[tableId + '_abs']]) || 0;
-        return ((isNaN(min) && isNaN(max)) || (isNaN(min) && absValue <= max) || (min <= absValue && isNaN(max)) || (min <= absValue && absValue <= max));
+        const min = parseFloat($('#minAbs').val());
+        const max = parseFloat($('#maxAbs').val());
+        const absValue = parseFloat(data[columnIndexes[tableId + '_abs']]) || 0;
+        const passAbs = (
+          (isNaN(min) && isNaN(max)) ||
+          (isNaN(min) && absValue <= max) ||
+          (min <= absValue && isNaN(max)) ||
+          (min <= absValue && absValue <= max)
+        );
+        if (!passAbs) return false;
       }
+
+      // Study 2 LLM child filters
+      if (tableId === 'dataTable2') {
+        const childOnly = $('#childOnly').is(':checked');
+        const selectedSource = $('#childSourceSelect').val();
+
+        if (childOnly && columnIndexes.childSources !== undefined) {
+          const src = (data[columnIndexes.childSources] || '').toString().trim();
+          if (!src) return false;
+        }
+
+        if (selectedSource && columnIndexes.childSources !== undefined) {
+          const src = (data[columnIndexes.childSources] || '').toString();
+          if (!src.includes(selectedSource)) return false;
+        }
+      }
+
       return true;
     });
 
-    $('#minSem, #maxSem, #minAbs, #maxAbs').on('keyup change', function() {
+    $('#minSem, #maxSem, #minAbs, #maxAbs, #childOnly, #childSourceSelect').on('keyup change', function() {
       const activeTableId = `dataTable${activeTabIndex + 1}`;
       if ($(`#${activeTableId}`).hasClass('dataTable')) {
         $(`#${activeTableId}`).DataTable().draw();
@@ -234,15 +402,28 @@ head(df)</code></pre>
 
     function openTab(tabIndex, tableId, fileUrl) {
       activeTabIndex = tabIndex;
-      document.querySelectorAll('.tab-content').forEach((el, index) => el.style.display = index === tabIndex ? 'block' : 'none');
-      document.querySelectorAll('.tab-button').forEach((el, index) => el.classList.toggle('active', index === tabIndex));
-      
-      if(tabIndex === 0) {
+
+      document.querySelectorAll('.tab-content').forEach((el, index) => {
+        el.style.display = index === tabIndex ? 'block' : 'none';
+      });
+
+      document.querySelectorAll('.tab-button').forEach((el, index) => {
+        el.classList.toggle('active', index === tabIndex);
+      });
+
+      if (tabIndex === 0) {
         $('#filterTab0').show();
         $('#filterTab1_2').hide();
       } else {
         $('#filterTab0').hide();
         $('#filterTab1_2').show();
+      }
+
+      // show child filters only for Study 2 LLM tab
+      if (tabIndex === 1) {
+        $('#childFilters').show();
+      } else {
+        $('#childFilters').hide();
       }
 
       if (!loadedTabs[tabIndex]) {
@@ -257,57 +438,72 @@ head(df)</code></pre>
       try {
         const response = await fetch(url);
         if (!response.ok) throw new Error("File not found");
-        
+
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
         if (jsonData.length === 0) return;
 
         const headerRow = jsonData[0];
+
         if (tableId === 'dataTable1') {
-          columnIndexes.semantic = headerRow.indexOf('LLM_RATING_Semantic_Distance');
+          columnIndexes.semantic = findHeaderIndex(headerRow, ['LLM_RATING_Semantic_Distance']);
         } else {
-          columnIndexes[tableId + '_abs'] = headerRow.indexOf('Absolute_Discrepancy');
+          columnIndexes[tableId + '_abs'] = findHeaderIndex(headerRow, ['Absolute_Discrepancy']);
+        }
+
+        if (tableId === 'dataTable2') {
+          columnIndexes.childSources = findHeaderIndex(headerRow, ['Child_Database_Sources']);
         }
 
         const columns = headerRow.map(key => ({
           title: key,
           data: key,
           defaultContent: "",
-          render: function(data, type) {
+          render: function(data, type, row) {
             if (type === 'display') {
-              // Study 1 Rendering Rule (0-2 = Transparent, 3-5 = Opaque)
-              if (key === 'LLM_RATING_Semantic_Distance') {
+              const keyLower = String(key).toLowerCase();
+
+              // Study 1 semantic distance
+              if (keyLower === 'llm_rating_semantic_distance') {
                 const val = parseFloat(data);
                 if (!isNaN(val)) {
-                  return val <= 2 
-                    ? `<span class="badge-transparent">${val} (Transparent)</span>` 
+                  return val <= 2
+                    ? `<span class="badge-transparent">${val} (Transparent)</span>`
                     : `<span class="badge-opaque">${val} (Opaque)</span>`;
                 }
               }
-              // Study 2 Rendering Rule:
-              // For Crowdsourced (dataTable3), round to nearest integer first (round 0 = Transparent, >= 1 = Opaque)
-              // For LLM (dataTable2), raw 0 = Transparent, >= 1 = Opaque
-              if (key === 'Absolute_Discrepancy') {
+
+              // Study 2 absolute discrepancy
+              if (keyLower === 'absolute_discrepancy') {
                 const val = parseFloat(data);
                 if (!isNaN(val)) {
                   const roundedVal = tableId === 'dataTable3' ? Math.round(val) : val;
-                  return roundedVal === 0 
-                    ? `<span class="badge-transparent">${val} (Transparent)</span>` 
+                  return roundedVal === 0
+                    ? `<span class="badge-transparent">${val} (Transparent)</span>`
                     : `<span class="badge-opaque">${val} (Opaque)</span>`;
                 }
+              }
+
+              // Child source pretty rendering
+              if (keyLower === 'child_database_sources') {
+                const txt = (data || '').toString().trim();
+                if (!txt) return '';
+                return txt.split(';').map(s => `<span class="child-tag">${s.trim()}</span>`).join(' ');
               }
             }
             return data;
           }
         }));
 
+        const tableData = jsonData.slice(1).map(row => {
+          const rowObj = {};
+          headerRow.forEach((h, i) => rowObj[h] = row[i]);
+          return rowObj;
+        });
+
         const table = $(`#${tableId}`).DataTable({
-          data: jsonData.slice(1).map(row => {
-            let rowObj = {};
-            headerRow.forEach((h, i) => rowObj[h] = row[i]);
-            return rowObj;
-          }),
+          data: tableData,
           columns: columns,
           pageLength: 25,
           dom: 'Bfrtip',
@@ -319,6 +515,7 @@ head(df)</code></pre>
         updateDashboardVisuals(tableId);
 
       } catch (error) {
+        console.error(error);
         $(`#${tableId}`).html('<tr><td>Error loading data. Check console.</td></tr>');
       }
     }
@@ -327,24 +524,22 @@ head(df)</code></pre>
       const table = $(`#${tableId}`).DataTable();
       const filteredData = table.rows({ filter: 'applied' }).data().toArray();
 
-      // Update KPI: Filtered Records
       $('#kpiCount').text(filteredData.length.toLocaleString());
 
       let totalVal = 0;
       let transparentCount = 0;
+
       const targetCol = tableId === 'dataTable1' ? 'LLM_RATING_Semantic_Distance' : 'Absolute_Discrepancy';
 
       filteredData.forEach(row => {
         const val = parseFloat(row[targetCol]) || 0;
         totalVal += val;
-        
+
         if (tableId === 'dataTable1') {
           if (val <= 2) transparentCount++;
         } else if (tableId === 'dataTable3') {
-          // Study 2 Crowdsourced: Round to nearest integer
           if (Math.round(val) === 0) transparentCount++;
         } else {
-          // Study 2 LLM
           if (val === 0) transparentCount++;
         }
       });
@@ -355,15 +550,14 @@ head(df)</code></pre>
       $('#kpiAvgMetric').text(avg);
       $('#kpiRatio').text(ratio);
 
-      // Update Dynamic Chart
       renderChart(filteredData, targetCol, tableId);
     }
 
     function renderChart(data, metricKey, tableId) {
       const ctx = document.getElementById('dynamicChart').getContext('2d');
-      
+
       const counts = tableId === 'dataTable1' ? [0, 0, 0, 0, 0, 0] : [0, 0, 0, 0];
-      const labels = tableId === 'dataTable1' 
+      const labels = tableId === 'dataTable1'
         ? ['SEM 0', 'SEM 1', 'SEM 2', 'SEM 3', 'SEM 4', 'SEM 5']
         : ['0 (Transparent)', '1 (Opaque)', '2 (Opaque)', '3+ (Opaque)'];
 
@@ -374,7 +568,6 @@ head(df)</code></pre>
             const idx = Math.min(Math.max(Math.round(val), 0), 5);
             counts[idx]++;
           } else {
-            // Apply Math.round for crowdsourced data when bucketing chart bars
             const effectiveVal = tableId === 'dataTable3' ? Math.round(val) : val;
             if (effectiveVal === 0) counts[0]++;
             else if (effectiveVal <= 1) counts[1]++;
@@ -393,9 +586,9 @@ head(df)</code></pre>
           datasets: [{
             label: tableId === 'dataTable1' ? 'Semantic Distance Frequency' : 'Discrepancy Distribution',
             data: counts,
-            backgroundColor: tableId === 'dataTable1' 
-              ? ['#22c55e','#22c55e','#22c55e','#ef4444','#ef4444','#ef4444']
-              : ['#22c55e','#ef4444','#ef4444','#ef4444']
+            backgroundColor: tableId === 'dataTable1'
+              ? ['#22c55e', '#22c55e', '#22c55e', '#ef4444', '#ef4444', '#ef4444']
+              : ['#22c55e', '#ef4444', '#ef4444', '#ef4444']
           }]
         },
         options: {
