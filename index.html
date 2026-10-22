@@ -1,486 +1,783 @@
-<script>
-  const loadedTabs = {};
-  const columnIndexes = {};
-  const metricColumnName = {};
-  let activeTabIndex = 0;
-  let chartInstance = null;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Morphological Transparency Norms Dashboard</title>
 
-  function findHeaderIndex(headerRow, candidates) {
-    const lower = headerRow.map(h => String(h).toLowerCase().trim());
-    for (const c of candidates) {
-      const idx = lower.indexOf(c.toLowerCase());
-      if (idx !== -1) return idx;
-    }
-    return -1;
-  }
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 
-  function findHeaderName(headerRow, candidates) {
-    const lower = headerRow.map(h => String(h).toLowerCase().trim());
-    for (const c of candidates) {
-      const idx = lower.indexOf(c.toLowerCase());
-      if (idx !== -1) return headerRow[idx];
-    }
-    return null;
-  }
+  <!-- SheetJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-  function parseCSVText(text) {
-    const wb = XLSX.read(text, { type: 'string' });
-    return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
-  }
+  <!-- jQuery + DataTables -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.1.2/css/buttons.dataTables.min.css">
+  <script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/3.1.2/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/3.1.2/js/buttons.html5.min.js"></script>
 
-  async function fetchTableData(url) {
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    const lowerUrl = url.toLowerCase();
-    if (lowerUrl.endsWith(".csv")) {
-      const text = await response.text();
-      return parseCSVText(text);
-    } else {
-      const arrayBuffer = await response.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: "array" });
-      return XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
-    }
-  }
-
-  function shuffleArray(arr) {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  }
-
-  function getWordFieldForTab(tableId, row) {
-    // Try common variants
-    if (tableId === 'dataTable1') return row["WORD"] ?? row["word"] ?? row["Word"] ?? "";
-    if (tableId === 'dataTable2' || tableId === 'dataTable3') return row["word"] ?? row["WORD"] ?? row["stimulus"] ?? row["Word"] ?? "";
-    return row["word"] ?? row["WORD"] ?? row["stimulus"] ?? "";
-  }
-
-  function getBadgeForRow(tableId, row) {
-    if (tableId === 'dataTable1') {
-      const v = parseFloat(row["LLM_RATING_Semantic_Distance"]);
-      if (isNaN(v)) return "";
-      return v <= 2
-        ? `<span class="badge-transparent">SEM ${v} Transparent</span>`
-        : `<span class="badge-opaque">SEM ${v} Opaque</span>`;
+  <style>
+    :root{
+      --primary:#1d4ed8;
+      --primary-2:#2563eb;
+      --accent:#06b6d4;
+      --bg:#f4f8ff;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#dbe7ff;
+      --shadow:0 10px 30px rgba(30,58,138,.10);
+      --radius:14px;
     }
 
-    const v = parseFloat(row["Absolute_Discrepancy"]);
-    if (isNaN(v)) return "";
-    const effective = tableId === "dataTable3" ? Math.round(v) : v;
-    return effective === 0
-      ? `<span class="badge-transparent">Abs ${v} Transparent</span>`
-      : `<span class="badge-opaque">Abs ${v} Opaque</span>`;
-  }
-
-  function updateSpotlight(tableId, filteredData) {
-    const container = document.getElementById("randomSpotlight");
-    if (!container) return;
-
-    if (!filteredData || filteredData.length === 0) {
-      container.innerHTML = "No rows in current filter.";
-      return;
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0}
+    body{
+      font-family:'Inter',system-ui,-apple-system,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(900px 500px at 10% -10%, rgba(37,99,235,.15), transparent 60%),
+        radial-gradient(700px 450px at 95% 0%, rgba(6,182,212,.12), transparent 55%),
+        var(--bg);
+      max-width:1280px;
+      margin:0 auto;
+      padding:24px;
     }
 
-    const picks = shuffleArray(filteredData).slice(0, 6);
+    h1,h2{margin:0 0 10px 0}
+    h1{
+      font-family:'Space Grotesk',sans-serif;
+      font-size:2.1rem;
+      line-height:1.1;
+      letter-spacing:-.02em;
+      color:#0b1f58;
+    }
+    h2{
+      color:#0e2a75;
+      font-size:1.2rem;
+    }
+    h3{color:#1f3b86;margin:10px 0 6px}
 
-    const html = picks.map(r => {
-      const w = getWordFieldForTab(tableId, r);
-      const badge = getBadgeForRow(tableId, r);
-      return `<span style="display:inline-block;margin:4px 8px 4px 0;padding:6px 10px;border:1px solid #e2e8f0;border-radius:999px;background:#fff;">
-        <strong>${w || "(no word)"}</strong> ${badge}
-      </span>`;
-    }).join("");
-
-    container.innerHTML = html;
-  }
-
-  // Global DataTables filters
-  $.fn.dataTable.ext.search.push(function(settings, data) {
-    const tableId = settings.nTable.id;
-
-    // Study 1 SEM filter
-    if (tableId === 'dataTable1' && columnIndexes.semantic >= 0) {
-      const min = parseFloat($('#minSem').val());
-      const max = parseFloat($('#maxSem').val());
-      const semValue = parseFloat(data[columnIndexes.semantic]) || 0;
-
-      const passSem =
-        (isNaN(min) && isNaN(max)) ||
-        (isNaN(min) && semValue <= max) ||
-        (min <= semValue && isNaN(max)) ||
-        (min <= semValue && semValue <= max);
-
-      if (!passSem) return false;
+    .summary,.instructions,.filter-box,.metrics-guide,.kpi-container,.chart-box{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:18px;
+      margin-bottom:18px;
     }
 
-    // Study 2 abs filter
-    if ((tableId === 'dataTable2' || tableId === 'dataTable3') && columnIndexes[tableId + '_abs'] >= 0) {
-      const min = parseFloat($('#minAbs').val());
-      const max = parseFloat($('#maxAbs').val());
-      const absValue = parseFloat(data[columnIndexes[tableId + '_abs']]) || 0;
-
-      const passAbs =
-        (isNaN(min) && isNaN(max)) ||
-        (isNaN(min) && absValue <= max) ||
-        (min <= absValue && isNaN(max)) ||
-        (min <= absValue && absValue <= max);
-
-      if (!passAbs) return false;
+    .summary{
+      background:linear-gradient(135deg,#eef4ff 0%,#f7fbff 60%,#ecfeff 100%);
     }
 
-    // Child filters only on Study 2 LLM tab
-    if (tableId === 'dataTable2') {
-      const childOnly = $('#childOnly').is(':checked');
-      const selectedSource = $('#childSourceSelect').val();
+    .summary p{margin-top:0}
+    .summary ul{margin:8px 0 0 18px}
+    .metrics-guide ul{margin:6px 0 12px 18px}
+    .metrics-guide li{margin-bottom:4px;color:#24324a}
+    .metrics-guide p{color:var(--muted)}
 
-      if (childOnly && columnIndexes.childSources >= 0) {
-        const src = (data[columnIndexes.childSources] || '').toString().trim();
-        if (!src) return false;
+    .kpi-container{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+      gap:12px;
+      background:linear-gradient(180deg,#eff6ff,#f8fbff);
+    }
+    .kpi-card{
+      background:#fff;
+      border:1px solid #dbeafe;
+      border-radius:12px;
+      padding:14px;
+    }
+    .kpi-card h4{
+      margin:0;
+      font-size:.76rem;
+      font-weight:700;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      color:#64748b;
+    }
+    .kpi-card .val{
+      margin-top:6px;
+      font-size:1.8rem;
+      font-weight:800;
+      color:#1e3a8a;
+    }
+
+    .chart-box{max-height:330px}
+
+    .tabs{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin:0 0 14px 0;
+      padding:0 0 10px 0;
+      border-bottom:1px solid var(--border);
+    }
+    .tab-button{
+      border:none;
+      border-radius:10px;
+      padding:10px 14px;
+      font-weight:700;
+      color:#1e3a8a;
+      background:#eaf1ff;
+      cursor:pointer;
+      transition:.2s ease;
+    }
+    .tab-button:hover{transform:translateY(-1px);background:#dbe8ff}
+    .tab-button.active{
+      color:#fff;
+      background:linear-gradient(135deg,var(--primary),var(--primary-2));
+      box-shadow:0 6px 16px rgba(37,99,235,.35);
+    }
+
+    .tab-content{display:none}
+    .tab-content.active{display:block}
+
+    .filter-group{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    .filter-group label{font-weight:700;color:#1e3a8a}
+    .filter-group input,.filter-group select{
+      padding:7px 10px;
+      border:1px solid #c9d8ff;
+      border-radius:8px;
+      background:#fff;
+    }
+
+    .table-container{
+      overflow:auto;
+      border:1px solid #e6eeff;
+      border-radius:12px;
+      background:#fff;
+      padding:8px;
+    }
+
+    a{color:var(--primary-2);text-decoration:none;font-weight:700}
+    a:hover{text-decoration:underline}
+
+    pre{
+      background:#0b1220;
+      color:#e5efff;
+      border-radius:10px;
+      padding:14px;
+      overflow:auto;
+      border:1px solid #1f2a44;
+    }
+
+    .badge-transparent{
+      background:#dcfce7;
+      color:#166534;
+      padding:2px 9px;
+      border-radius:999px;
+      font-weight:700;
+      font-size:.85em;
+      white-space:nowrap;
+    }
+    .badge-opaque{
+      background:#fee2e2;
+      color:#991b1b;
+      padding:2px 9px;
+      border-radius:999px;
+      font-weight:700;
+      font-size:.85em;
+      white-space:nowrap;
+    }
+    .child-tag{
+      background:#eef2ff;
+      color:#3730a3;
+      padding:2px 8px;
+      border-radius:999px;
+      font-size:.8em;
+      font-weight:700;
+      margin-right:4px;
+      margin-bottom:2px;
+      display:inline-block;
+    }
+  </style>
+</head>
+<body>
+  <h1>Morphological Transparency Norms Dashboard</h1>
+  <p style="margin:6px 0 18px 0;color:#475569;font-weight:500;">
+    Searchable norms for semantic and morphological transparency in school-relevant vocabulary.
+  </p>
+
+  <div class="summary">
+    <h2>Project Summary</h2>
+    <p>This dataset provides large-scale estimates of semantic transparency and perceived morphological structure for English polymorphemic words.</p>
+    <ul>
+      <li><strong>Study 1:</strong> Semantic distance between a derivation and its baseword (Nagy & Anderson, 1984).</li>
+      <li><strong>Study 2:</strong> LLM and crowdsourced estimates of perceived morphemes and discrepancy from ELP-listed counts.</li>
+    </ul>
+  </div>
+
+  <div class="metrics-guide">
+    <h2>Understanding the Metrics</h2>
+
+    <h3>Study 1: Semantic Distance Scale</h3>
+    <p style="font-size: 0.9em; margin-bottom: 10px; color: #64748b;">
+      Ratings 0–2 are treated as semantically transparent; 3–5 as semantically opaque.
+    </p>
+    <ul>
+      <li><strong>SEM 0:</strong> Semantically transparent.</li>
+      <li><strong>SEM 1:</strong> Meaning inferable from baseword with minimal context.</li>
+      <li><strong>SEM 2:</strong> Meaning inferable with moderate context.</li>
+      <li><strong>SEM 3:</strong> Requires substantial context.</li>
+      <li><strong>SEM 4:</strong> Distant relation; hard to infer from base.</li>
+      <li><strong>SEM 5:</strong> No clear semantic connection.</li>
+    </ul>
+
+    <h3>Study 2: Morpheme Count Transparency</h3>
+    <ul>
+      <li><strong>Absolute_Discrepancy (main indicator):</strong> 0 = transparent match; higher values = more opaque mismatch.</li>
+      <li><strong>Signed_Discrepancy:</strong> Perceived minus ELP count (negative = undersegmentation; positive = oversegmentation).</li>
+      <li><strong>Transparency_Proximity_0_1:</strong> 1 = perfect alignment; lower values = less transparent.</li>
+      <li><strong>Child_Database_Sources:</strong> Indicates where a word occurs in child/school-related print.</li>
+    </ul>
+
+    <h3>Child_Database_Sources legend</h3>
+    <ul>
+      <li><strong>COCA_Juv_Fiction:</strong> Juvenile fiction subset of COCA (Davies, 2008–).</li>
+      <li><strong>CYP_LEX:</strong> Children and Young People’s Books Lexicon (Korochkina et al., 2024).</li>
+      <li><strong>CPB_Lex:</strong> Children’s Picture Books Lexicon (Green et al., 2024).</li>
+      <li><strong>Core_Reading_Programs:</strong> Vocabulary in major US elementary reading programs (Graves et al., 2019).</li>
+      <li><strong>Living_Word_Vocab:</strong> Dale & O’Rourke (1981) grade-linked vocabulary resource.</li>
+      <li><strong>VXGL:</strong> Grade-level vocabulary mapping resource (Flor et al., 2025).</li>
+    </ul>
+  </div>
+
+  <div class="kpi-container">
+    <div class="kpi-card">
+      <h4>Filtered Records</h4>
+      <div class="val" id="kpiCount">0</div>
+    </div>
+    <div class="kpi-card">
+      <h4>Avg Metric Score</h4>
+      <div class="val" id="kpiAvgMetric">0.00</div>
+    </div>
+    <div class="kpi-card">
+      <h4>Transparent Ratio</h4>
+      <div class="val" id="kpiRatio">0%</div>
+    </div>
+  </div>
+
+  <div class="summary" id="spotlightBox">
+    <h2>Random Spotlight</h2>
+    <div id="randomSpotlight" style="color:#475569;">No data loaded yet.</div>
+  </div>
+
+  <div class="chart-box">
+    <canvas id="dynamicChart" height="75"></canvas>
+  </div>
+
+  <div class="filter-box">
+    <h2>Data Filters</h2>
+    <p style="font-size: 0.9em; color: #64748b; margin-top: -10px; margin-bottom: 15px;">
+      Use text search plus range filters. Leave blank to clear.
+    </p>
+
+    <div id="filterTab0" class="filter-group">
+      <label>Semantic Distance Range (SEM 0–5):</label>
+      <input type="number" id="minSem" placeholder="Min" step="1" min="0" max="5">
+      <span>to</span>
+      <input type="number" id="maxSem" placeholder="Max" step="1" min="0" max="5">
+    </div>
+
+    <div id="filterTab1_2" class="filter-group" style="display:none;">
+      <label>Absolute Discrepancy Range (higher = more opaque):</label>
+      <input type="number" id="minAbs" placeholder="Min" step="0.1" min="0">
+      <span>to</span>
+      <input type="number" id="maxAbs" placeholder="Max" step="0.1" min="0">
+    </div>
+
+    <div id="childFilters" class="filter-group" style="display:none;">
+      <label><input type="checkbox" id="childOnly"> Child-database words only</label>
+      <label>Child source contains:</label>
+      <select id="childSourceSelect">
+        <option value="">(any)</option>
+        <option value="COCA_Juv_Fiction">COCA_Juv_Fiction</option>
+        <option value="CYP_LEX">CYP_LEX</option>
+        <option value="CPB_Lex">CPB_Lex</option>
+        <option value="Core_Reading_Programs">Core_Reading_Programs</option>
+        <option value="Living_Word_Vocab">Living_Word_Vocab</option>
+        <option value="VXGL">VXGL</option>
+      </select>
+    </div>
+
+    <div class="filter-group" id="shuffleControls">
+      <label><input type="checkbox" id="shuffleOnLoad" checked> Shuffle rows on load</label>
+      <button type="button" id="shuffleNowBtn" style="padding:7px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;cursor:pointer;">
+        Shuffle now
+      </button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-button active" onclick="openTab(0, 'dataTable1', 'Study_1_Final_Data_Semantic_Distance_Ratings.csv')">Study 1: Semantic Distance</button>
+    <button class="tab-button" onclick="openTab(1, 'dataTable2', 'Study_2_Final_Data_LLM_Transparency_Estimates.csv')">Study 2: LLM Estimates</button>
+    <button class="tab-button" onclick="openTab(2, 'dataTable3', 'Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv')">Study 2: Human Crowdsourced</button>
+  </div>
+
+  <div id="tab0" class="tab-content active">
+    <div class="table-container"><table id="dataTable1" class="display" style="width:100%"></table></div>
+  </div>
+  <div id="tab1" class="tab-content">
+    <div class="table-container"><table id="dataTable2" class="display" style="width:100%"></table></div>
+  </div>
+  <div id="tab2" class="tab-content">
+    <div class="table-container"><table id="dataTable3" class="display" style="width:100%"></table></div>
+  </div>
+
+  <div class="instructions">
+    <h2>How to Access & Use This Data</h2>
+    <p style="margin-bottom:20px;">
+      <a href="Study_1_Final_Data_Semantic_Distance_Ratings.csv" download>↓ Download Study 1</a> |
+      <a href="Study_2_Final_Data_LLM_Transparency_Estimates.csv" download>↓ Download Study 2 LLM</a> |
+      <a href="Study_2_Final_Data_Crowdsourced_Morpheme_Counting_Task.csv" download>↓ Download Study 2 Crowdsourced</a>
+    </p>
+
+    <h3>Load in Python (pandas)</h3>
+<pre><code>import pandas as pd
+url = "https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv"
+df = pd.read_csv(url)
+print(df.head())</code></pre>
+
+    <h3>Load in R (readr)</h3>
+<pre><code>library(readr)
+url <- "https://raw.githubusercontent.com/CGG-PROJECTS/Morphological_Transparency/main/Study_2_Final_Data_LLM_Transparency_Estimates.csv"
+df <- read_csv(url)
+head(df)</code></pre>
+  </div>
+
+  <script>
+    const loadedTabs = {};
+    const columnIndexes = {};
+    const metricColumnName = {};
+    let activeTabIndex = 0;
+    let chartInstance = null;
+
+    function findHeaderIndex(headerRow, candidates) {
+      const lower = headerRow.map(h => String(h).toLowerCase().trim());
+      for (const c of candidates) {
+        const idx = lower.indexOf(c.toLowerCase());
+        if (idx !== -1) return idx;
       }
+      return -1;
+    }
 
-      if (selectedSource && columnIndexes.childSources >= 0) {
-        const src = (data[columnIndexes.childSources] || '').toString();
-        if (!src.includes(selectedSource)) return false;
+    function findHeaderName(headerRow, candidates) {
+      const lower = headerRow.map(h => String(h).toLowerCase().trim());
+      for (const c of candidates) {
+        const idx = lower.indexOf(c.toLowerCase());
+        if (idx !== -1) return headerRow[idx];
       }
+      return null;
     }
 
-    return true;
-  });
-
-  $('#minSem, #maxSem, #minAbs, #maxAbs, #childOnly, #childSourceSelect').on('keyup change', function() {
-    const activeTableId = `dataTable${activeTabIndex + 1}`;
-    if ($(`#${activeTableId}`).hasClass('dataTable')) {
-      $(`#${activeTableId}`).DataTable().draw();
-    }
-  });
-
-  $('#shuffleNowBtn').on('click', function() {
-    const activeTableId = `dataTable${activeTabIndex + 1}`;
-    if (!$(`#${activeTableId}`).hasClass('dataTable')) return;
-
-    const dt = $(`#${activeTableId}`).DataTable();
-    const rows = dt.rows().data().toArray();
-    const shuffled = shuffleArray(rows);
-    dt.clear();
-    dt.rows.add(shuffled);
-    dt.draw();
-
-    updateDashboardVisuals(activeTableId);
-  });
-
-  function openTab(tabIndex, tableId, fileUrl) {
-    activeTabIndex = tabIndex;
-
-    document.querySelectorAll('.tab-content').forEach((el, index) => {
-      el.style.display = index === tabIndex ? 'block' : 'none';
-    });
-
-    document.querySelectorAll('.tab-button').forEach((el, index) => {
-      el.classList.toggle('active', index === tabIndex);
-    });
-
-    if (tabIndex === 0) {
-      $('#filterTab0').show();
-      $('#filterTab1_2').hide();
-    } else {
-      $('#filterTab0').hide();
-      $('#filterTab1_2').show();
+    function parseCSVText(text) {
+      const wb = XLSX.read(text, { type: 'string' });
+      return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
     }
 
-    if (tabIndex === 1) $('#childFilters').show();
-    else $('#childFilters').hide();
+    async function fetchTableData(url) {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
 
-    if (!loadedTabs[tabIndex]) {
-      loadData(fileUrl, tableId);
-      loadedTabs[tabIndex] = true;
-    } else {
-      updateDashboardVisuals(tableId);
-    }
-  }
-
-  async function loadData(url, tableId) {
-    try {
-      const jsonData = await fetchTableData(url);
-      if (!jsonData || jsonData.length === 0) throw new Error(`No rows in file: ${url}`);
-
-      const headerRow = jsonData[0];
-      if (!headerRow || headerRow.length === 0) throw new Error(`No header row in file: ${url}`);
-
-      // Reorder Study 2 columns
-      let orderedHeaders = [...headerRow];
-      if (tableId === 'dataTable2' || tableId === 'dataTable3') {
-        const colWord = findHeaderName(headerRow, ['word', 'stimulus', 'word_lowercase']);
-        const colAbs = findHeaderName(headerRow, ['absolute_discrepancy']);
-        const colChild = findHeaderName(headerRow, ['child_database_sources']);
-        const preferred = [colWord, colAbs, colChild].filter(Boolean);
-        const remaining = headerRow.filter(h => !preferred.includes(h));
-        orderedHeaders = [...preferred, ...remaining];
-      }
-
-      // indexes / metric keys
-      if (tableId === 'dataTable1') {
-        columnIndexes.semantic = findHeaderIndex(orderedHeaders, ['llm_rating_semantic_distance']);
-        metricColumnName[tableId] = findHeaderName(orderedHeaders, ['llm_rating_semantic_distance']);
+      const lowerUrl = url.toLowerCase();
+      if (lowerUrl.endsWith(".csv")) {
+        const text = await response.text();
+        return parseCSVText(text);
       } else {
-        columnIndexes[tableId + '_abs'] = findHeaderIndex(orderedHeaders, ['absolute_discrepancy']);
-        metricColumnName[tableId] = findHeaderName(orderedHeaders, ['absolute_discrepancy']);
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        return XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
       }
-
-      if (tableId === 'dataTable2') {
-        columnIndexes.childSources = findHeaderIndex(orderedHeaders, ['child_database_sources']);
-      }
-
-      const columns = orderedHeaders.map(key => ({
-        title: key,
-        data: key,
-        defaultContent: "",
-        render: function(data, type) {
-          if (type === 'display') {
-            const keyLower = String(key).toLowerCase();
-
-            if (keyLower === 'llm_rating_semantic_distance') {
-              const val = parseFloat(data);
-              if (!isNaN(val)) {
-                return val <= 2
-                  ? `<span class="badge-transparent">${val} (Transparent)</span>`
-                  : `<span class="badge-opaque">${val} (Opaque)</span>`;
-              }
-            }
-
-            if (keyLower === 'absolute_discrepancy') {
-              const val = parseFloat(data);
-              if (!isNaN(val)) {
-                const effective = tableId === 'dataTable3' ? Math.round(val) : val;
-                return effective === 0
-                  ? `<span class="badge-transparent">${val} (Transparent)</span>`
-                  : `<span class="badge-opaque">${val} (Opaque)</span>`;
-              }
-            }
-
-            if (keyLower === 'child_database_sources') {
-              const txt = (data || '').toString().trim();
-              if (!txt) return '';
-              return txt
-                .split(';')
-                .map(s => s.trim())
-                .filter(Boolean)
-                .map(s => `<span class="child-tag">${s}</span>`)
-                .join(' ');
-            }
-          }
-          return data;
-        }
-      }));
-
-      const tableData = jsonData.slice(1).map(row => {
-        const rowObj = {};
-        headerRow.forEach((h, i) => rowObj[h] = row[i]);
-        return rowObj;
-      });
-
-      // Shuffle on load if checked
-      const initialData = $('#shuffleOnLoad').is(':checked') ? shuffleArray(tableData) : tableData;
-
-      const dtOptions = {
-        data: initialData,
-        columns: columns,
-        pageLength: 25,
-        dom: 'Bfrtip',
-        buttons: ['csv', 'excel'],
-        deferRender: true
-      };
-
-      // If not shuffled, default sort by abs discrepancy for Study 2 tabs
-      if (!$('#shuffleOnLoad').is(':checked') && (tableId === 'dataTable2' || tableId === 'dataTable3')) {
-        const absIdx = findHeaderIndex(orderedHeaders, ['absolute_discrepancy']);
-        if (absIdx >= 0) dtOptions.order = [[absIdx, 'desc']];
-      }
-
-      $(`#${tableId}`).DataTable(dtOptions);
-
-      $(`#${tableId}`).on('draw.dt', function() {
-        updateDashboardVisuals(tableId);
-      });
-
-      updateDashboardVisuals(tableId);
-
-    } catch (error) {
-      console.error(error);
-      $(`#${tableId}`).html(
-        `<tr><td style="padding:12px;color:#991b1b;">
-          Error loading data: ${String(error.message)}
-        </td></tr>`
-      );
-    }
-  }
-
-  function updateDashboardVisuals(tableId) {
-    const table = $(`#${tableId}`).DataTable();
-    const filteredData = table.rows({ filter: 'applied' }).data().toArray();
-
-    $('#kpiCount').text(filteredData.length.toLocaleString());
-
-    const targetCol = metricColumnName[tableId];
-    if (!targetCol) {
-      $('#kpiAvgMetric').text('0.00');
-      $('#kpiRatio').text('0%');
-      updateSpotlight(tableId, []);
-      return;
     }
 
-    let totalVal = 0;
-    let transparentCount = 0;
-
-    filteredData.forEach(row => {
-      const val = parseFloat(row[targetCol]);
-      if (!isNaN(val)) {
-        totalVal += val;
-
-        if (tableId === 'dataTable1') {
-          if (val <= 2) transparentCount++;
-        } else if (tableId === 'dataTable3') {
-          if (Math.round(val) === 0) transparentCount++;
-        } else {
-          if (val === 0) transparentCount++;
-        }
+    function shuffleArray(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
       }
-    });
+      return a;
+    }
 
-    const avg = filteredData.length ? (totalVal / filteredData.length).toFixed(2) : '0.00';
-    const ratio = filteredData.length ? ((transparentCount / filteredData.length) * 100).toFixed(1) + '%' : '0%';
+    function getWordFieldForTab(tableId, row) {
+      if (tableId === 'dataTable1') return row["WORD"] ?? row["word"] ?? row["Word"] ?? "";
+      if (tableId === 'dataTable2' || tableId === 'dataTable3') return row["word"] ?? row["WORD"] ?? row["stimulus"] ?? row["Word"] ?? "";
+      return row["word"] ?? row["WORD"] ?? row["stimulus"] ?? "";
+    }
 
-    $('#kpiAvgMetric').text(avg);
-    $('#kpiRatio').text(ratio);
-
-    renderChart(filteredData, targetCol, tableId);
-    updateSpotlight(tableId, filteredData);
-  }
-
-  function renderChart(data, metricKey, tableId) {
-    const canvas = document.getElementById('dynamicChart');
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    const counts = tableId === 'dataTable1' ? [0, 0, 0, 0, 0, 0] : [0, 0, 0, 0];
-    const labels = tableId === 'dataTable1'
-      ? ['SEM 0', 'SEM 1', 'SEM 2', 'SEM 3', 'SEM 4', 'SEM 5']
-      : ['0 (Transparent)', '1 (Opaque)', '2 (Opaque)', '3+ (Opaque)'];
-
-    data.forEach(row => {
-      const val = parseFloat(row[metricKey]);
-      if (!isNaN(val)) {
-        if (tableId === 'dataTable1') {
-          const idx = Math.min(Math.max(Math.round(val), 0), 5);
-          counts[idx]++;
-        } else {
-          const effective = tableId === 'dataTable3' ? Math.round(val) : val;
-          if (effective === 0) counts[0]++;
-          else if (effective <= 1) counts[1]++;
-          else if (effective <= 2) counts[2]++;
-          else counts[3]++;
-        }
+    function getBadgeForRow(tableId, row) {
+      if (tableId === 'dataTable1') {
+        const v = parseFloat(row["LLM_RATING_Semantic_Distance"]);
+        if (isNaN(v)) return "";
+        return v <= 2
+          ? `<span class="badge-transparent">SEM ${v} Transparent</span>`
+          : `<span class="badge-opaque">SEM ${v} Opaque</span>`;
       }
-    });
-
-    if (chartInstance) chartInstance.destroy();
-
-    chartInstance = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          label: tableId === 'dataTable1' ? 'Semantic Distance Frequency' : 'Absolute Discrepancy Distribution',
-          data: counts,
-          backgroundColor: tableId === 'dataTable1'
-            ? ['#22c55e', '#22c55e', '#22c55e', '#ef4444', '#ef4444', '#ef4444']
-            : ['#22c55e', '#ef4444', '#ef4444', '#ef4444']
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } }
-      }
-    });
-  }
-
-  function getWordFieldForTab(tableId, row) {
-    if (tableId === 'dataTable1') return row["WORD"] ?? row["word"] ?? row["Word"] ?? "";
-    if (tableId === 'dataTable2' || tableId === 'dataTable3') return row["word"] ?? row["WORD"] ?? row["stimulus"] ?? row["Word"] ?? "";
-    return row["word"] ?? row["WORD"] ?? row["stimulus"] ?? "";
-  }
-
-  function getBadgeForRow(tableId, row) {
-    if (tableId === 'dataTable1') {
-      const v = parseFloat(row["LLM_RATING_Semantic_Distance"]);
+      const v = parseFloat(row["Absolute_Discrepancy"]);
       if (isNaN(v)) return "";
-      return v <= 2
-        ? `<span class="badge-transparent">SEM ${v} Transparent</span>`
-        : `<span class="badge-opaque">SEM ${v} Opaque</span>`;
+      const effective = tableId === "dataTable3" ? Math.round(v) : v;
+      return effective === 0
+        ? `<span class="badge-transparent">Abs ${v} Transparent</span>`
+        : `<span class="badge-opaque">Abs ${v} Opaque</span>`;
     }
 
-    const v = parseFloat(row["Absolute_Discrepancy"]);
-    if (isNaN(v)) return "";
-    const effective = tableId === "dataTable3" ? Math.round(v) : v;
-    return effective === 0
-      ? `<span class="badge-transparent">Abs ${v} Transparent</span>`
-      : `<span class="badge-opaque">Abs ${v} Opaque</span>`;
-  }
+    function updateSpotlight(tableId, filteredData) {
+      const container = document.getElementById("randomSpotlight");
+      if (!container) return;
 
-  function updateSpotlight(tableId, filteredData) {
-    const container = document.getElementById("randomSpotlight");
-    if (!container) return;
+      if (!filteredData || filteredData.length === 0) {
+        container.innerHTML = "No rows in current filter.";
+        return;
+      }
 
-    if (!filteredData || filteredData.length === 0) {
-      container.innerHTML = "No rows in current filter.";
-      return;
+      const picks = shuffleArray(filteredData).slice(0, 6);
+      const html = picks.map(r => {
+        const w = getWordFieldForTab(tableId, r);
+        const badge = getBadgeForRow(tableId, r);
+        return `<span style="display:inline-block;margin:4px 8px 4px 0;padding:6px 10px;border:1px solid #e2e8f0;border-radius:999px;background:#fff;">
+          <strong>${w || "(no word)"}</strong> ${badge}
+        </span>`;
+      }).join("");
+
+      container.innerHTML = html;
     }
 
-    const picks = shuffleArray(filteredData).slice(0, 6);
+    // Global DataTables filters
+    $.fn.dataTable.ext.search.push(function(settings, data) {
+      const tableId = settings.nTable.id;
 
-    const html = picks.map(r => {
-      const w = getWordFieldForTab(tableId, r);
-      const badge = getBadgeForRow(tableId, r);
-      return `<span style="display:inline-block;margin:4px 8px 4px 0;padding:6px 10px;border:1px solid #e2e8f0;border-radius:999px;background:#fff;">
-        <strong>${w || "(no word)"}</strong> ${badge}
-      </span>`;
-    }).join("");
+      // Study 1 SEM filter
+      if (tableId === 'dataTable1' && columnIndexes.semantic >= 0) {
+        const min = parseFloat($('#minSem').val());
+        const max = parseFloat($('#maxSem').val());
+        const semValue = parseFloat(data[columnIndexes.semantic]) || 0;
 
-    container.innerHTML = html;
-  }
+        const passSem =
+          (isNaN(min) && isNaN(max)) ||
+          (isNaN(min) && semValue <= max) ||
+          (min <= semValue && isNaN(max)) ||
+          (min <= semValue && semValue <= max);
 
-  function shuffleArray(arr) {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
+        if (!passSem) return false;
+      }
+
+      // Study 2 abs discrepancy filter
+      if ((tableId === 'dataTable2' || tableId === 'dataTable3') && columnIndexes[tableId + '_abs'] >= 0) {
+        const min = parseFloat($('#minAbs').val());
+        const max = parseFloat($('#maxAbs').val());
+        const absValue = parseFloat(data[columnIndexes[tableId + '_abs']]) || 0;
+
+        const passAbs =
+          (isNaN(min) && isNaN(max)) ||
+          (isNaN(min) && absValue <= max) ||
+          (min <= absValue && isNaN(max)) ||
+          (min <= absValue && absValue <= max);
+
+        if (!passAbs) return false;
+      }
+
+      // Child source filters only on Study 2 LLM tab
+      if (tableId === 'dataTable2') {
+        const childOnly = $('#childOnly').is(':checked');
+        const selectedSource = $('#childSourceSelect').val();
+
+        if (childOnly && columnIndexes.childSources >= 0) {
+          const src = (data[columnIndexes.childSources] || '').toString().trim();
+          if (!src) return false;
+        }
+
+        if (selectedSource && columnIndexes.childSources >= 0) {
+          const src = (data[columnIndexes.childSources] || '').toString();
+          if (!src.includes(selectedSource)) return false;
+        }
+      }
+
+      return true;
+    });
+
+    $('#minSem, #maxSem, #minAbs, #maxAbs, #childOnly, #childSourceSelect').on('keyup change', function() {
+      const activeTableId = `dataTable${activeTabIndex + 1}`;
+      if ($(`#${activeTableId}`).hasClass('dataTable')) {
+        $(`#${activeTableId}`).DataTable().draw();
+      }
+    });
+
+    $('#shuffleNowBtn').on('click', function() {
+      const activeTableId = `dataTable${activeTabIndex + 1}`;
+      if (!$(`#${activeTableId}`).hasClass('dataTable')) return;
+
+      const dt = $(`#${activeTableId}`).DataTable();
+      const rows = dt.rows().data().toArray();
+      const shuffled = shuffleArray(rows);
+
+      dt.clear();
+      dt.rows.add(shuffled);
+      dt.draw();
+
+      updateDashboardVisuals(activeTableId);
+    });
+
+    function openTab(tabIndex, tableId, fileUrl) {
+      activeTabIndex = tabIndex;
+
+      document.querySelectorAll('.tab-content').forEach((el, index) => {
+        el.style.display = index === tabIndex ? 'block' : 'none';
+      });
+
+      document.querySelectorAll('.tab-button').forEach((el, index) => {
+        el.classList.toggle('active', index === tabIndex);
+      });
+
+      if (tabIndex === 0) {
+        $('#filterTab0').show();
+        $('#filterTab1_2').hide();
+      } else {
+        $('#filterTab0').hide();
+        $('#filterTab1_2').show();
+      }
+
+      if (tabIndex === 1) $('#childFilters').show();
+      else $('#childFilters').hide();
+
+      if (!loadedTabs[tabIndex]) {
+        loadData(fileUrl, tableId);
+        loadedTabs[tabIndex] = true;
+      } else {
+        updateDashboardVisuals(tableId);
+      }
     }
-    return a;
-  }
 
-  $('#shuffleNowBtn').on('click', function() {
-    const activeTableId = `dataTable${activeTabIndex + 1}`;
-    if (!$(`#${activeTableId}`).hasClass('dataTable')) return;
+    async function loadData(url, tableId) {
+      try {
+        const jsonData = await fetchTableData(url);
+        if (!jsonData || jsonData.length === 0) throw new Error(`No rows in file: ${url}`);
 
-    const dt = $(`#${activeTableId}`).DataTable();
-    const rows = dt.rows().data().toArray();
-    const shuffled = shuffleArray(rows);
+        const headerRow = jsonData[0];
+        if (!headerRow || headerRow.length === 0) throw new Error(`No header row in file: ${url}`);
 
-    dt.clear();
-    dt.rows.add(shuffled);
-    dt.draw();
+        // Reorder Study 2 columns (both LLM + Human):
+        // word first, absolute_discrepancy second, child sources third (if present)
+        let orderedHeaders = [...headerRow];
+        if (tableId === 'dataTable2' || tableId === 'dataTable3') {
+          const colWord = findHeaderName(headerRow, ['word', 'stimulus', 'word_lowercase']);
+          const colAbs = findHeaderName(headerRow, ['absolute_discrepancy']);
+          const colChild = findHeaderName(headerRow, ['child_database_sources']);
 
-    updateDashboardVisuals(activeTableId);
-  });
+          const preferred = [colWord, colAbs, colChild].filter(Boolean);
+          const remaining = headerRow.filter(h => !preferred.includes(h));
+          orderedHeaders = [...preferred, ...remaining];
+        }
 
-  $(document).ready(function() {
-    openTab(0, 'dataTable1', 'Study_1_Final_Data_Semantic_Distance_Ratings.csv');
-  });
+        // Metric columns for filters/KPIs/charts
+        if (tableId === 'dataTable1') {
+          columnIndexes.semantic = findHeaderIndex(orderedHeaders, ['llm_rating_semantic_distance']);
+          metricColumnName[tableId] = findHeaderName(orderedHeaders, ['llm_rating_semantic_distance']);
+        } else {
+          columnIndexes[tableId + '_abs'] = findHeaderIndex(orderedHeaders, ['absolute_discrepancy']);
+          metricColumnName[tableId] = findHeaderName(orderedHeaders, ['absolute_discrepancy']);
+        }
+
+        if (tableId === 'dataTable2') {
+          columnIndexes.childSources = findHeaderIndex(orderedHeaders, ['child_database_sources']);
+        }
+
+        const columns = orderedHeaders.map(key => ({
+          title: key,
+          data: key,
+          defaultContent: "",
+          render: function(data, type) {
+            if (type === 'display') {
+              const keyLower = String(key).toLowerCase();
+
+              // Study 1 semantic distance badge
+              if (keyLower === 'llm_rating_semantic_distance') {
+                const val = parseFloat(data);
+                if (!isNaN(val)) {
+                  return val <= 2
+                    ? `<span class="badge-transparent">${val} (Transparent)</span>`
+                    : `<span class="badge-opaque">${val} (Opaque)</span>`;
+                }
+              }
+
+              // Study 2 absolute discrepancy badge
+              if (keyLower === 'absolute_discrepancy') {
+                const val = parseFloat(data);
+                if (!isNaN(val)) {
+                  const effective = tableId === 'dataTable3' ? Math.round(val) : val;
+                  return effective === 0
+                    ? `<span class="badge-transparent">${val} (Transparent)</span>`
+                    : `<span class="badge-opaque">${val} (Opaque)</span>`;
+                }
+              }
+
+              // Child source tags
+              if (keyLower === 'child_database_sources') {
+                const txt = (data || '').toString().trim();
+                if (!txt) return '';
+                return txt
+                  .split(';')
+                  .map(s => s.trim())
+                  .filter(Boolean)
+                  .map(s => `<span class="child-tag">${s}</span>`)
+                  .join(' ');
+              }
+            }
+            return data;
+          }
+        }));
+
+        const tableData = jsonData.slice(1).map(row => {
+          const rowObj = {};
+          headerRow.forEach((h, i) => rowObj[h] = row[i]);
+          return rowObj;
+        });
+
+        // Shuffle on load if checked
+        const initialData = $('#shuffleOnLoad').is(':checked') ? shuffleArray(tableData) : tableData;
+
+        const dtOptions = {
+          data: initialData,
+          columns: columns,
+          pageLength: 25,
+          dom: 'Bfrtip',
+          buttons: ['csv', 'excel'],
+          deferRender: true
+        };
+
+        // If not shuffled, default sort by abs discrepancy descending on Study 2 tabs
+        if (!$('#shuffleOnLoad').is(':checked') && (tableId === 'dataTable2' || tableId === 'dataTable3')) {
+          const absIdx = findHeaderIndex(orderedHeaders, ['absolute_discrepancy']);
+          if (absIdx >= 0) dtOptions.order = [[absIdx, 'desc']];
+        }
+
+        $(`#${tableId}`).DataTable(dtOptions);
+
+        $(`#${tableId}`).on('draw.dt', function() {
+          updateDashboardVisuals(tableId);
+        });
+
+        updateDashboardVisuals(tableId);
+
+      } catch (error) {
+        console.error(error);
+        $(`#${tableId}`).html(
+          `<tr><td style="padding:12px;color:#991b1b;">
+            Error loading data: ${String(error.message)}
+          </td></tr>`
+        );
+      }
+    }
+
+    function updateDashboardVisuals(tableId) {
+      const table = $(`#${tableId}`).DataTable();
+      const filteredData = table.rows({ filter: 'applied' }).data().toArray();
+
+      $('#kpiCount').text(filteredData.length.toLocaleString());
+
+      const targetCol = metricColumnName[tableId];
+      if (!targetCol) {
+        $('#kpiAvgMetric').text('0.00');
+        $('#kpiRatio').text('0%');
+        updateSpotlight(tableId, []);
+        return;
+      }
+
+      let totalVal = 0;
+      let transparentCount = 0;
+
+      filteredData.forEach(row => {
+        const val = parseFloat(row[targetCol]);
+        if (!isNaN(val)) {
+          totalVal += val;
+
+          if (tableId === 'dataTable1') {
+            if (val <= 2) transparentCount++;
+          } else if (tableId === 'dataTable3') {
+            if (Math.round(val) === 0) transparentCount++;
+          } else {
+            if (val === 0) transparentCount++;
+          }
+        }
+      });
+
+      const avg = filteredData.length ? (totalVal / filteredData.length).toFixed(2) : '0.00';
+      const ratio = filteredData.length ? ((transparentCount / filteredData.length) * 100).toFixed(1) + '%' : '0%';
+
+      $('#kpiAvgMetric').text(avg);
+      $('#kpiRatio').text(ratio);
+
+      renderChart(filteredData, targetCol, tableId);
+      updateSpotlight(tableId, filteredData);
+    }
+
+    function renderChart(data, metricKey, tableId) {
+      const canvas = document.getElementById('dynamicChart');
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      const counts = tableId === 'dataTable1' ? [0, 0, 0, 0, 0, 0] : [0, 0, 0, 0];
+      const labels = tableId === 'dataTable1'
+        ? ['SEM 0', 'SEM 1', 'SEM 2', 'SEM 3', 'SEM 4', 'SEM 5']
+        : ['0 (Transparent)', '1 (Opaque)', '2 (Opaque)', '3+ (Opaque)'];
+
+      data.forEach(row => {
+        const val = parseFloat(row[metricKey]);
+        if (!isNaN(val)) {
+          if (tableId === 'dataTable1') {
+            const idx = Math.min(Math.max(Math.round(val), 0), 5);
+            counts[idx]++;
+          } else {
+            const effective = tableId === 'dataTable3' ? Math.round(val) : val;
+            if (effective === 0) counts[0]++;
+            else if (effective <= 1) counts[1]++;
+            else if (effective <= 2) counts[2]++;
+            else counts[3]++;
+          }
+        }
+      });
+
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: tableId === 'dataTable1' ? 'Semantic Distance Frequency' : 'Absolute Discrepancy Distribution',
+            data: counts,
+            backgroundColor: tableId === 'dataTable1'
+              ? ['#22c55e', '#22c55e', '#22c55e', '#ef4444', '#ef4444', '#ef4444']
+              : ['#22c55e', '#ef4444', '#ef4444', '#ef4444']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    $(document).ready(function() {
+      openTab(0, 'dataTable1', 'Study_1_Final_Data_Semantic_Distance_Ratings.csv');
+    });
   </script>
 </body>
 </html>
