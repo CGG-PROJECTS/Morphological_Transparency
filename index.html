@@ -606,15 +606,17 @@ function getWordFieldForTab(tableId, row) {
         // Reorder Study 2 columns (both LLM + Human):
         // word first, absolute_discrepancy second, child sources third (if present)
         let orderedHeaders = [...headerRow];
-        if (tableId === 'dataTable2' || tableId === 'dataTable3') {
-          const colWord = findHeaderName(headerRow, ['word', 'stimulus', 'word_lowercase']);
-          const colAbs = findHeaderName(headerRow, ['absolute_discrepancy']);
-          const colChild = findHeaderName(headerRow, ['child_database_sources']);
+let absDiscrepancyCol = null;
 
-          const preferred = [colWord, colAbs, colChild].filter(Boolean);
-          const remaining = headerRow.filter(h => !preferred.includes(h));
-          orderedHeaders = [...preferred, ...remaining];
-        }
+if (tableId === 'dataTable2' || tableId === 'dataTable3') {
+  const colWord = findHeaderName(headerRow, ['word', 'stimulus', 'word_lowercase']);
+  absDiscrepancyCol = findHeaderName(headerRow, ['absolute_discrepancy']);
+  const colChild = findHeaderName(headerRow, ['child_database_sources']);
+
+  const preferred = [colWord, absDiscrepancyCol, colChild].filter(Boolean);
+  const remaining = headerRow.filter(h => !preferred.includes(h));
+  orderedHeaders = [...preferred, ...remaining];
+}
 
         // Metric columns for filters/KPIs/charts
         if (tableId === 'dataTable1') {
@@ -648,15 +650,15 @@ function getWordFieldForTab(tableId, row) {
               }
 
               // Study 2 absolute discrepancy badge
-              if (keyLower === 'absolute_discrepancy') {
-                const val = parseFloat(data);
-                if (!isNaN(val)) {
-                  const effective = tableId === 'dataTable3' ? Math.round(val) : val;
-                  return effective === 0
-                    ? `<span class="badge-transparent">${val} (Transparent)</span>`
-                    : `<span class="badge-opaque">${val} (Opaque)</span>`;
-                }
-              }
+      if (keyLower === 'absolute_discrepancy') {
+  const val = parseFloat(data);
+  if (!isNaN(val)) {
+    const effective = tableId === 'dataTable3' ? Math.round(val) : val;
+    return effective === 0
+      ? `<span class="badge-transparent">${effective} (Transparent)</span>`
+      : `<span class="badge-opaque">${effective} (Opaque)</span>`;
+  }
+}
 
               // Child source tags
               if (keyLower === 'child_database_sources') {
@@ -674,12 +676,21 @@ function getWordFieldForTab(tableId, row) {
           }
         }));
 
-        const tableData = jsonData.slice(1).map(row => {
-          const rowObj = {};
-          headerRow.forEach((h, i) => rowObj[h] = row[i]);
-          return rowObj;
-        });
+const tableData = jsonData.slice(1).map(row => {
+  const rowObj = {};
+  headerRow.forEach((h, i) => rowObj[h] = row[i]);
 
+  // For Study 2 Human Crowdsourced tab, round Absolute_Discrepancy
+  // to the nearest integer.
+  if (tableId === 'dataTable3' && absDiscrepancyCol) {
+    const rawVal = parseFloat(rowObj[absDiscrepancyCol]);
+    if (!isNaN(rawVal)) {
+      rowObj[absDiscrepancyCol] = Math.round(rawVal);
+    }
+  }
+
+  return rowObj;
+});
         // Shuffle on load if checked
         const initialData = $('#shuffleOnLoad').is(':checked') ? shuffleArray(tableData) : tableData;
 
